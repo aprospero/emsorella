@@ -21,6 +21,8 @@
 #include "defines.h"
 #include "queue.h"
 #include "rx.h"
+#include "tool/logger.h"
+
 
 #define handle_error_en(en, msg) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
 
@@ -31,32 +33,31 @@ pthread_t readloop = 0;
 int logging = 0;
 
 void print_stats() {
-    if (!(logging & LOG_INFO))
-        return;
-    logalways(LOG_INFO, "Statistics");
-    logalways(LOG_INFO, "RX bus access errors    %d", stats.rx_mac_errors);
-    logalways(LOG_INFO, "RX total                %d", stats.rx_total);
-    logalways(LOG_INFO, "RX success              %d", stats.rx_success);
-    logalways(LOG_INFO, "RX too short            %d", stats.rx_short);
-    logalways(LOG_INFO, "RX wrong sender         %d", stats.rx_sender);
-    logalways(LOG_INFO, "RX CRC errors           %d", stats.rx_format);
-    logalways(LOG_INFO, "TX total                %d", stats.tx_total);
-    logalways(LOG_INFO, "TX failures             %d", stats.tx_fail);
+    LOG_INFO("Statistics");
+    LOG_INFO("RX bus access errors    %d", stats.rx_mac_errors);
+    LOG_INFO("RX total                %d", stats.rx_total);
+    LOG_INFO("RX success              %d", stats.rx_success);
+    LOG_INFO("RX too short            %d", stats.rx_short);
+    LOG_INFO("RX wrong sender         %d", stats.rx_sender);
+    LOG_INFO("RX CRC errors           %d", stats.rx_format);
+    LOG_INFO("TX total                %d", stats.tx_total);
+    LOG_INFO("TX failures             %d", stats.tx_fail);
 }
 
-void print_packet(int out, int loglevel, uint8_t *msg, size_t len) {
-    if (!(logging & loglevel))
+void print_packet(int out, enum log_level loglevel, const char * prefix, uint8_t *msg, size_t len) {
+    if (!log_get_level(loglevel))
         return;
     char text[3 + MAX_PACKET_SIZE * 3 + 2 + 1];
     int pos = 0;
-    pos += sprintf(&text[0], out ? "TX:" : "RX:");
+    pos += sprintf(&text[0], "%s (%d) %cX:", prefix, len, out ? 'T' : 'R');
+
     for (size_t i = 0; i < len; i++) {
         pos += sprintf(&text[pos], " %02hhx", msg[i]);
         if (i == 3 || i == len - 2) {
             pos += sprintf(&text[pos], " ");
         }
     }
-    logalways(loglevel, "%s", text);
+    log_push(loglevel, "%s", text);
 }
 
 void stop_handler() {
@@ -81,7 +82,7 @@ void *read_loop() {
     }
 
     pthread_cleanup_push(stop_handler, NULL);
-    log(LOG_INFO, "Starting EMS bus access");
+    LOG_INFO("Starting EMS bus access");
     while (1) {
         rx_packet(&abort);
         rx_done();
@@ -95,22 +96,22 @@ int start(char *port_path) {
 
     ret = open_serial(port_path);
     if (ret != 0) {
-        log(LOG_ERROR,"Failed to open %s: %i", port_path, ret);
+        LOG_ERROR("Failed to open %s: %i", port_path, ret);
         return(-1);
     }
-    log(LOG_VERBOSE, "Serial port %s opened", port_path);
+    LOG_INFO("Serial port %s opened", port_path);
 
     setup_queue(&tx_queue, TX_QUEUE_NAME);
     if (tx_queue == -1) {
-        log(LOG_ERROR, "Failed to open TX message queue: %i %s", tx_queue, strerror(errno));
+        LOG_ERROR("Failed to open TX message queue: %i %s", tx_queue, strerror(errno));
         return(-1);
     }
     setup_queue(&rx_queue, RX_QUEUE_NAME);
     if (rx_queue == -1) {
-        log(LOG_ERROR, "Failed to open RX message queue: %i  %s", rx_queue, strerror(errno));
+        LOG_ERROR("Failed to open RX message queue: %i  %s", rx_queue, strerror(errno));
         return(-1);
     }
-    log(LOG_VERBOSE, "Connected to message queues");
+    LOG_INFO("Connected to message queues");
 
     ret = pthread_create(&readloop, NULL, &read_loop, NULL);
     if (ret != 0)
@@ -134,12 +135,14 @@ int main(int argc, char *argv[]) {
     int ret;
     struct sigaction signal_action;
 
-    if (argc < 2) {
-        fprintf(stderr, "Usage: %s [ttypath] [logmask]\n", argv[0]);
-        return(0);
+    log_init("ems_serio",  LF_STDOUT, LL_INFO);
+
+    if (argc < 3) {
+      LOG_ERROR("Usage: %s <ttypath> <logmask>\n", argv[0]);
+        return(-1);
     }
 
-    logging = atoi(argv[2]);
+//    log_set_level(atoi(argv[2]), TRUE);
     ret = start(argv[1]);
 
     // Set signal handler and wait for the thread

@@ -24,7 +24,7 @@ void tx_break() {
     if (ret != 0) {
         return;
     }
-    log(LOG_CHAR, "WR 0x%02hhx BREAK", BREAK_OUT[0]);
+    LOG_DEBUG("WR 0x%02hhx BREAK", BREAK_OUT[0]);
     write(port, BREAK_OUT, 1);
     set_parity(0);
 }
@@ -33,37 +33,37 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
     size_t i;
     uint8_t echo;
 
-    print_packet(1, LOG_PACKET, msg, len);
+    print_packet(1, LL_INFO, "DATA", msg, len);
 
     // Write the message by character while checking the echoed characters from the MASTER_ID
     for (i = 0; i < len; i++) {
-        log(LOG_CHAR, "WR 0x%02hhx", msg[i]);
+        LOG_DEBUG("WR 0x%02hhx", msg[i]);
         if (write(port, &msg[i], 1) != 1) {
-            log(LOG_ERROR, "write() failed");
+            LOG_ERROR("write() failed");
             return(i);
         }
         if (rx_wait() != 1) {
-            log(LOG_ERROR, "Echo not received after 200 ms");
+            LOG_ERROR("Echo not received after 200 ms");
             return(i);
         }
         if (read(port, &echo, 1) != 1) {
-            log(LOG_ERROR, "read() failed after successful select");
+            LOG_ERROR("read() failed after successful select");
             return(i);
         };
-        log(LOG_CHAR, "RD 0x%02hhx", echo);
+        LOG_DEBUG("RD 0x%02hhx", echo);
         if (msg[i] != echo) {
-            log(LOG_ERROR, "TX fail: send 0x%02x but echo is 0x%02x", msg[i], echo);
+            LOG_ERROR("TX fail: send 0x%02x but echo is 0x%02x", msg[i], echo);
             return(i);
         }
         if (echo == 0xff) {
             // Parity escaping also doubles a 0xff
             if (read(port, &echo, 1) != 1) {
-                log(LOG_ERROR, "read() failed");
+                LOG_ERROR("read() failed");
                 return(i);
             }
-            log(LOG_CHAR, "RD 0x%02hhx", echo);
+            LOG_DEBUG("RD 0x%02hhx", echo);
             if (echo != 0xff) {
-                log(LOG_ERROR, "TX fail: parity escaping expected 0xff but got 0x%02x", echo);
+                LOG_ERROR("TX fail: parity escaping expected 0xff but got 0x%02x", echo);
                 return(i);
             }
         }
@@ -71,7 +71,7 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
 
     tx_break();
     if (rx_break() == -1) {
-        log(LOG_ERROR, "TX fail: packet not ACKed by MASTER_ID");
+        LOG_ERROR("TX fail: packet not ACKed by MASTER_ID");
         return(0);
     }
 
@@ -88,7 +88,7 @@ void handle_poll() {
     // Todo: Release the bus after sending a message (does not work)
     if (tx_retries < 0 || tx_retries > MAX_TX_RETRIES) {
         if (tx_retries > MAX_TX_RETRIES) {
-            log(LOG_ERROR, "TX failed 5 times. Dropping message.");
+            LOG_ERROR("TX failed 5 times. Dropping message.");
             tx_retries = -1;
         }
         // Pick a new message
@@ -107,17 +107,15 @@ void handle_poll() {
 
     gettimeofday(&now, NULL);
     have_bus = (now.tv_sec - got_bus.tv_sec) * 1000000 + now.tv_usec - got_bus.tv_usec;
-    log(LOG_VERBOSE, "Occupying bus since %li us", have_bus);
+   LOG_INFO("Occupying bus since %li us", have_bus);
 
     if (tx_retries >= 0 && have_bus < MAX_BUS_TIME) {
-        print_packet(1, LOG_PACKET, tx_buf, tx_len);
         if ((size_t)tx_packet(tx_buf, tx_len) == tx_len) {
             tx_retries = -1;
             if (tx_buf[1] == 0x00) {
                 // Release bus
-                print_packet(1, LOG_PACKET, &client_id, 1);
                 if (tx_packet(&client_id, 1) != 1) {
-                    log(LOG_ERROR, "TX poll reply failed");
+                    LOG_ERROR("TX poll reply failed");
                 }
                 state = RELEASED;
             } else if (tx_buf[1] & 0x80) {
@@ -131,15 +129,14 @@ void handle_poll() {
                 state = WROTE;
             }
         } else {
-            log(LOG_ERROR, "TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
+            LOG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
             tx_retries++;
             state = RELEASED;
         }
     } else {
         // Nothing to send.
-        print_packet(1, LOG_MAC, &client_id, 1);
         if (tx_packet(&client_id, 1) != 1) {
-            log(LOG_ERROR, "TX poll reply failed");
+            LOG_ERROR("TX poll reply failed");
         }
         state = RELEASED;
     }

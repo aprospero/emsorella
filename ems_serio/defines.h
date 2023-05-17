@@ -17,13 +17,6 @@
 #define ACK_VALUE 0x01
 #define MAX_BUS_TIME 200 * 1000
 
-#define LOG_ERROR 0x01   // Error messages
-#define LOG_INFO 0x02    // Informational messages on start and stop
-#define LOG_VERBOSE 0x04 // Verbose message on start and stop and bus timing
-#define LOG_PACKET 0x08  // Output received and transmitted packets
-#define LOG_MAC 0x10     // Output sync (token) information
-#define LOG_CHAR 0x20    // Output single characters
-
 struct STATS {
     unsigned int rx_mac_errors;
     unsigned int rx_total;
@@ -37,12 +30,3 @@ struct STATS {
 };
 
 enum STATE { RELEASED, ASSIGNED, WROTE, READ };
-
-#ifdef PYTHON_MODULE
-#include "python_module.h"
-#define logalways(level, ...) do { ems_serio_log(level, __VA_ARGS__); } while (0)
-#else
-#define logalways(level, fmt, ...) do { printf(fmt "\n", ## __VA_ARGS__); } while (0)
-#endif
-#define log(level, fmt, ...) \
-            do { if (logging & level) logalways(level, fmt, ## __VA_ARGS__); } while (0)

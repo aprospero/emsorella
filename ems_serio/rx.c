@@ -10,6 +10,7 @@
 #include "ems_serio.h"
 #include "queue.h"
 #include "tx.h"
+#include "tool/logger.h"
 
 size_t rx_len;
 uint8_t rx_buf[MAX_PACKET_SIZE];
@@ -37,13 +38,13 @@ int rx_break() {
 
     ret = rx_wait();
     if (ret != 1) {
-        log(LOG_ERROR, "select() failed: %i", ret);
+        LOG_ERROR("select() failed: %i", ret);
         return(-1);
     }
     for (size_t i = 0; i < sizeof(BREAK_IN) - 1; i++) {
         ret = read(port, &echo, 1);
         if (ret != 1 || echo != BREAK_IN[i]) {
-            log(LOG_ERROR, "TX fail: expected break char 0x%02x but got 0x%02x", echo,
+            LOG_ERROR("TX fail: expected break char 0x%02x but got 0x%02x", echo,
                 BREAK_IN[i]);
             return(-1);
         }
@@ -93,7 +94,7 @@ void rx_packet(int *abort) {
         // Discard all character above the message limit and warn.
         if (rx_len >= MAX_PACKET_SIZE) {
             if (rx_len == MAX_PACKET_SIZE)
-                log(LOG_ERROR, "Maximum packet size reached. Following characters ignored."
+                LOG_ERROR("Maximum packet size reached. Following characters ignored."
                                "\tIs your serial connected and is it detecting breaks?");
             continue;
         }
@@ -113,11 +114,11 @@ void rx_done() {
     // - Send a write request to another device (destination is device ID) (ACKed with 0x01)
     // - Read another device (desination is ORed with 0x80) (Answer comes immediately)
     if (rx_len == 1) {
-        print_packet(0, LOG_MAC, rx_buf, rx_len);
+        print_packet(0, LL_DEBUG_MORE, "MAC", rx_buf, rx_len);
         if (rx_buf[0] == 0x01) {
             // Got an ACK. Warn if there was no write from the bus-owning device.
             if (state != WROTE) {
-                log(LOG_ERROR, "Got an ACK without prior write message from 0x%02hhx", polled_id);
+                LOG_ERROR("Got an ACK without prior write message from 0x%02hhx", polled_id);
                 stats.rx_mac_errors++;
             }
             if (polled_id == client_id) {
@@ -129,7 +130,7 @@ void rx_done() {
         } else if (rx_buf[0] >= 0x08 && rx_buf[0] < 0x80) {
             // Bus release.
             if (state != ASSIGNED) {
-                log(LOG_ERROR, "Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
+              LOG_DEBUG("Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
                 stats.rx_mac_errors++;
             }
             polled_id = 0;
@@ -137,7 +138,7 @@ void rx_done() {
         } else if (rx_buf[0] & 0x80) {
             // Bus assign. We may not be in released state it the queried device did not exist.
             if (state != RELEASED && state != ASSIGNED) {
-                log(LOG_ERROR, "Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
+                LOG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
                 stats.rx_mac_errors++;
             }
             polled_id = rx_buf[0] & 0x7f;
@@ -148,17 +149,17 @@ void rx_done() {
                 state = ASSIGNED;
             }
         } else {
-            log(LOG_ERROR, "Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
+            LOG_DEBUG("Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
             stats.rx_mac_errors++;
         }
         return;
     }
 
-    print_packet(0, LOG_PACKET, rx_buf, rx_len);
+    print_packet(0, LL_INFO, "DATA", rx_buf, rx_len);
 
     stats.rx_total++;
     if (rx_len < 6) {
-        log(LOG_ERROR, "Ignored short package");
+        LOG_WARN("Ignored short package");
         if (state == WROTE || state == READ)
             state = ASSIGNED;
         stats.rx_short++;
@@ -174,7 +175,7 @@ void rx_done() {
         state = RELEASED;
     } else if (state == ASSIGNED) {
         if (rx_buf[0] != polled_id && rx_buf[0] != MASTER_ID) {
-            log(LOG_ERROR, "Ignored package from 0x%02hhx instead of polled 0x%02hhx or MASTER_ID",
+            LOG_ERROR("Ignored package from 0x%02hhx instead of polled 0x%02hhx or MASTER_ID",
                    rx_buf[0], polled_id);
             stats.rx_sender++;
             return;
@@ -182,7 +183,7 @@ void rx_done() {
         dst = rx_buf[1] & 0x7f;
         if (rx_buf[1] & 0x80) {
             if (dst < 0x08) {
-                log(LOG_ERROR, "Ignored read from 0x%02hhx to invalid address 0x%02hhx",
+                LOG_ERROR("Ignored read from 0x%02hhx to invalid address 0x%02hhx",
                     rx_buf[0], dst);
                 stats.rx_format++;
                 return;
@@ -195,7 +196,7 @@ void rx_done() {
             state = READ;
         } else {
             if (dst > 0x00 && dst < 0x08) {
-                log(LOG_ERROR, "Ignored write from 0x%02hhx to invalid address 0x%02hhx",
+                LOG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx",
                     rx_buf[0], dst);
                 stats.rx_format++;
                 return;
@@ -209,7 +210,7 @@ void rx_done() {
         // Handle immediate read response.
         state = ASSIGNED;
         if (memcmp(read_expected, rx_buf, HDR_LEN)) {
-            log(LOG_ERROR, "Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",
+            LOG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",
                 rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
             stats.rx_format++;
             return;
@@ -218,11 +219,11 @@ void rx_done() {
             handle_poll();
         }
     } else if (state == WROTE) {
-        log(LOG_ERROR, "Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
+        LOG_ERROR("Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
         stats.rx_sender++;
         return;
     } else if (rx_buf[0] != MASTER_ID) {
-        log(LOG_ERROR, "Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
+        LOG_ERROR("Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
         stats.rx_sender++;
         return;
     }
@@ -230,7 +231,7 @@ void rx_done() {
     // Do not check the CRC here. It adds too much delay and we risk missing a poll cycle.
     stats.rx_success++;
     if (mq_send(rx_queue, (char *)rx_buf, rx_len, 0) == -1) {
-        log(LOG_ERROR, "RX: Could not add packet to queue: %s", strerror(errno));
+        LOG_ERROR("RX: Could not add packet to queue: %s", strerror(errno));
     }
 }
 
