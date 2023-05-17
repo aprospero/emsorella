@@ -1,4 +1,4 @@
-#define MAX_PACKET_SIZE 32
+#define MAX_PACKET_SIZE 64
 #define SRCPOS 0
 #define DSTPOS 1
 #define HDR_LEN 4
