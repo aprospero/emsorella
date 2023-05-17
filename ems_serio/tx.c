@@ -85,7 +85,7 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
 void handle_poll() {
     ssize_t ret;
     struct timeval now;
-    int64_t have_bus;
+    int32_t have_bus;
 
     // We got polled by the MASTER_ID. Send a message or release the bus.
     // Todo: Send more than one message
@@ -110,8 +110,8 @@ void handle_poll() {
     }
 
     gettimeofday(&now, NULL);
-    have_bus = (now.tv_sec - got_bus.tv_sec) * 1000000 + now.tv_usec - got_bus.tv_usec;
-   LOG_INFO("Occupying bus since %li us", have_bus);
+    have_bus = (now.tv_sec - got_bus.tv_sec) * 1000 + (now.tv_usec - got_bus.tv_usec) / 1000;
+    LOG_INFO("Occupying bus since %li ms", have_bus);
 
     if (tx_retries >= 0 && have_bus < MAX_BUS_TIME) {
         if ((size_t)tx_packet(tx_buf, tx_len) == tx_len) {
