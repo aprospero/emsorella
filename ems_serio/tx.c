@@ -25,7 +25,11 @@ void tx_break() {
         return;
     }
     LOG_DEBUG("WR 0x%02hhx BREAK", BREAK_OUT[0]);
-    write(port, BREAK_OUT, 1);
+    if (write(port, BREAK_OUT, 1) < 1)
+	{
+		LOG_ERROR("write BREAK failed.");
+		return;
+    }
     set_parity(0);
 }
 
