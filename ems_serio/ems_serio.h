@@ -4,7 +4,7 @@
 #include "tool/logger.h"
 
 extern struct STATS stats;
-extern int logging;
+extern struct mqtt_handle * mqtt;
 extern pthread_t readloop;
 
 int start(char *);

@@ -21,6 +21,7 @@
 #include "defines.h"
 #include "queue.h"
 #include "rx.h"
+#include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
 
 
@@ -30,7 +31,7 @@ struct termios tios;
 int waitingfor;
 struct STATS stats;
 pthread_t readloop = 0;
-int logging = 0;
+struct mqtt_handle * mqtt;
 
 void print_stats() {
     LOG_INFO("Statistics");
@@ -86,7 +87,9 @@ void *read_loop() {
     while (1) {
         rx_packet(&abort);
         rx_done();
+        mqtt_loop(mqtt, 0);
     }
+    mqtt_close(mqtt);
     pthread_cleanup_pop(1);
     return NULL;
 }
@@ -136,6 +139,11 @@ int main(int argc, char *argv[]) {
     struct sigaction signal_action;
 
     log_init("ems_serio",  LF_STDOUT, LL_INFO);
+
+    mqtt = mqtt_init("ems", "MTDC");
+
+    if (mqtt == NULL)
+      LOG_ERROR("Could not initialize mqtt API.\n");
 
     if (argc < 3) {
       LOG_ERROR("Usage: %s <ttypath> <logmask>\n", argv[0]);

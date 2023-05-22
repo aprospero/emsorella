@@ -10,6 +10,7 @@
 #include "ems_serio.h"
 #include "queue.h"
 #include "tx.h"
+#include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
 
 size_t rx_len;
