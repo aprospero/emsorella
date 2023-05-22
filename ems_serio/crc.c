@@ -23,9 +23,8 @@ uint8_t crc_lookup_table[] = {
 
 uint8_t calc_crc(uint8_t *data, ssize_t len) {
     uint8_t crc = 0;
-    ssize_t to = len - 1;
 
-    for (int i = 0; i < to; i++) {
+    for (int i = 0; i < len; i++) {
         crc = crc_lookup_table[crc];
         crc ^= data[i];
     }

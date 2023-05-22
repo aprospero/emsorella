@@ -104,7 +104,7 @@ void handle_poll() {
             if (tx_len >= 6) {
                 // Set the source ID and CRC value
                 tx_buf[0] = client_id;
-                tx_buf[tx_len - 1] = calc_crc(tx_buf, tx_len);
+                tx_buf[tx_len - 1] = calc_crc(tx_buf, tx_len - 1);
             }
         }
     }

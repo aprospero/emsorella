@@ -10,6 +10,7 @@
 #include "ems_serio.h"
 #include "queue.h"
 #include "tx.h"
+#include "crc.h"
 #include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
 #include "ctrl/com/ems.h"
@@ -108,7 +109,8 @@ void rx_packet(int *abort) {
 // Handler on a received packet
 void rx_done() {
     uint8_t dst;
-
+    int crc;
+ 
     // Handle MAC packages first. They always have length 1.
     // MASTER_ID poll requests (bus assigns) have bit 7 set (0x80).
     // Bus release messages is the device ID, between 8 and 127 (0x08-0x7f).
@@ -169,10 +171,18 @@ void rx_done() {
         return;
     }
 
-    struct ems_telegram * tel = (struct ems_telegram *) rx_buf;
-    ems_swap_telegram(tel);
-    ems_log_telegram(LL_INFO, tel, rx_len);
-    ems_publish_telegram(mqtt, tel);
+    crc = calc_crc(rx_buf, rx_len - 1);
+    if (crc != rx_buf[rx_len-1])
+    {
+      LOG_ERROR("Got an CRC error: %d : %d.", crc, rx_buf[rx_len-1]);
+    }
+    else
+    {
+      struct ems_telegram * tel = (struct ems_telegram *) rx_buf;
+      ems_swap_telegram(tel);
+      ems_log_telegram(LL_INFO, tel, rx_len);
+      ems_publish_telegram(mqtt, tel);
+    }
 
     // The MASTER_ID can always send when the bus is not assigned (as it's senseless to poll himself).
     // This implementation does not implement the bus timeouts, so it may happen that the MASTER_ID
