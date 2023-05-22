@@ -12,6 +12,7 @@
 #include "tx.h"
 #include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
+#include "ctrl/com/ems.h"
 
 size_t rx_len;
 uint8_t rx_buf[MAX_PACKET_SIZE];
@@ -167,6 +168,11 @@ void rx_done() {
         stats.rx_short++;
         return;
     }
+
+    struct ems_telegram * tel = (struct ems_telegram *) rx_buf;
+    ems_swap_telegram(tel);
+    ems_log_telegram(LL_INFO, tel, rx_len);
+    ems_publish_telegram(mqtt, tel);
 
     // The MASTER_ID can always send when the bus is not assigned (as it's senseless to poll himself).
     // This implementation does not implement the bus timeouts, so it may happen that the MASTER_ID

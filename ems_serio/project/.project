@@ -140,6 +140,11 @@
 			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/tool/timehelp.h</locationURI>
 		</link>
 		<link>
+			<name>code/ctrl/com/ems.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/ctrl/com/ems.c</locationURI>
+		</link>
+		<link>
 			<name>code/ctrl/com/ems.h</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/ctrl/com/ems.h</locationURI>
