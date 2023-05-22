@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
     int ret;
     struct sigaction signal_action;
 
-    log_init("ems_serio",  LF_STDOUT, LL_INFO);
+    log_init("ems_serio",  LF_LOCAL1, LL_INFO);
 
     mqtt = mqtt_init("ems", "MTDC");
 
