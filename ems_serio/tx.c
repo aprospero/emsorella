@@ -37,7 +37,9 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
     size_t i;
     uint8_t echo;
 
-    print_packet(1, LL_INFO, "DATA", msg, len);
+    print_packet(1, LL_INFO, "WOULD SEND", msg, len);
+
+    len = 0; // we never send anything at all.
 
     // Write the message by character while checking the echoed characters from the MASTER_ID
     for (i = 0; i < len; i++) {
@@ -73,11 +75,11 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
         }
     }
 
-    tx_break();
-    if (rx_break() == -1) {
-        LOG_ERROR("TX fail: packet not ACKed by MASTER_ID");
-        return(0);
-    }
+//    tx_break();
+//    if (rx_break() == -1) {
+//        LOG_ERROR("TX fail: packet not ACKed by MASTER_ID");
+//        return(0);
+//    }
 
     return(i);
 }
