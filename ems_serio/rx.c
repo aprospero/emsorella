@@ -181,7 +181,7 @@ void rx_done() {
     crc = calc_crc(rx_buf, rx_len - 1);
     if (crc != rx_buf[rx_len-1])
     {
-      LOG_ERROR("Got an CRC error: %d : %d.", crc, rx_buf[rx_len-1]);
+      LOG_ERROR("Got an CRC error: 0x%02X : 0x%02X.", crc, rx_buf[rx_len-1]);
     }
     else
     {
