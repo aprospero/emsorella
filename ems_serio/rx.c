@@ -106,59 +106,62 @@ void rx_packet(int *abort) {
     }
 }
 
+void rx_mac()
+{
+  // MASTER_ID poll requests (bus assigns) have bit 7 set (0x80).
+  // Bus release messages is the device ID, between 8 and 127 (0x08-0x7f).
+  // When a device has the bus, it can:
+  // - Broadcast a message (destination is 0x00) (no response)
+  // - Send a write request to another device (destination is device ID) (ACKed with 0x01)
+  // - Read another device (desination is ORed with 0x80) (Answer comes immediately)
+  print_packet(0, LL_DEBUG_MORE, "MAC", rx_buf, rx_len);
+  if (rx_buf[0] == 0x01) {
+      // Got an ACK. Warn if there was no write from the bus-owning device.
+      if (state != WROTE) {
+          LOG_ERROR("Got an ACK without prior write message from 0x%02hhx", polled_id);
+          stats.rx_mac_errors++;
+      }
+      if (polled_id == client_id) {
+          // The ACK is for us after a write command. We can send another message.
+          handle_poll();
+      } else {
+          state = ASSIGNED;
+      }
+  } else if (rx_buf[0] >= 0x08 && rx_buf[0] < 0x80) {
+      // Bus release.
+      if (state != ASSIGNED) {
+        LOG_DEBUG("Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
+          stats.rx_mac_errors++;
+      }
+      polled_id = 0;
+      state = RELEASED;
+  } else if (rx_buf[0] & 0x80) {
+      // Bus assign. We may not be in released state it the queried device did not exist.
+      if (state != RELEASED && state != ASSIGNED) {
+          LOG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
+          stats.rx_mac_errors++;
+      }
+      polled_id = rx_buf[0] & 0x7f;
+      if (polled_id == client_id) {
+          gettimeofday(&got_bus, NULL);
+          handle_poll();
+      } else {
+          state = ASSIGNED;
+      }
+  } else {
+      LOG_DEBUG("Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
+      stats.rx_mac_errors++;
+  }
+}
+
 // Handler on a received packet
 void rx_done() {
     uint8_t dst;
     int crc;
  
     // Handle MAC packages first. They always have length 1.
-    // MASTER_ID poll requests (bus assigns) have bit 7 set (0x80).
-    // Bus release messages is the device ID, between 8 and 127 (0x08-0x7f).
-    // When a device has the bus, it can:
-    // - Broadcast a message (destination is 0x00) (no response)
-    // - Send a write request to another device (destination is device ID) (ACKed with 0x01)
-    // - Read another device (desination is ORed with 0x80) (Answer comes immediately)
-    if (rx_len == 1) {
-        print_packet(0, LL_DEBUG_MORE, "MAC", rx_buf, rx_len);
-        if (rx_buf[0] == 0x01) {
-            // Got an ACK. Warn if there was no write from the bus-owning device.
-            if (state != WROTE) {
-                LOG_ERROR("Got an ACK without prior write message from 0x%02hhx", polled_id);
-                stats.rx_mac_errors++;
-            }
-            if (polled_id == client_id) {
-                // The ACK is for us after a write command. We can send another message.
-                handle_poll();
-            } else {
-                state = ASSIGNED;
-            }
-        } else if (rx_buf[0] >= 0x08 && rx_buf[0] < 0x80) {
-            // Bus release.
-            if (state != ASSIGNED) {
-              LOG_DEBUG("Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
-                stats.rx_mac_errors++;
-            }
-            polled_id = 0;
-            state = RELEASED;
-        } else if (rx_buf[0] & 0x80) {
-            // Bus assign. We may not be in released state it the queried device did not exist.
-            if (state != RELEASED && state != ASSIGNED) {
-                LOG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
-                stats.rx_mac_errors++;
-            }
-            polled_id = rx_buf[0] & 0x7f;
-            if (polled_id == client_id) {
-                gettimeofday(&got_bus, NULL);
-                handle_poll();
-            } else {
-                state = ASSIGNED;
-            }
-        } else {
-            LOG_DEBUG("Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
-            stats.rx_mac_errors++;
-        }
-        return;
-    }
+    if (rx_len == 1)
+      return rx_mac();
 
     print_packet(0, LL_INFO, "DATA", rx_buf, rx_len);
 
