@@ -21,7 +21,7 @@ enum STATE state = RELEASED;
 uint8_t polled_id;
 uint8_t read_expected[HDR_LEN];
 struct timeval got_bus;
-static uint8_t client_id;
+static uint8_t client_id = 0x0BU;
 
 int rx_wait() {
     fd_set rfds;
