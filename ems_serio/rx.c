@@ -56,54 +56,58 @@ int rx_break() {
     return(0);
 }
 
+enum parity_state
+{
+  PAST_NONE,
+  PAST_ESCAPED,
+  PAST_ZEROED,
+  PAST_BREAK
+};
+
+const uint8_t break_chars[] = { 0xFFu, 0x00U, 0x00U };
+
 // Loop that reads single characters until a full packet is received.
 void rx_packet(int *abort) {
-    uint8_t c;
-    unsigned int parity = 0;
-    unsigned int parity_errors = 0;
 
-    rx_len = 0;
-    while (*abort != 1) {
-        if (read(port, &c, 1) != 1)
-            continue;
-        if (parity == 0 && c == 0xff) {
-            // We got a parity mark character.
-            parity = 1;
-            continue;
-        }
-        if (parity == 1) {
-            // Character after parity mark
-            if (c == 0x00) {
-                // 0xff 0x00 -> This is the mark, next is the marked character.
-                parity = 2;
-                continue;
-            }
-            parity = 0;
-            if (c != 0xFF) {
-                // Cannot be... Ignore that character.
-                continue;
-            }
-        }
-        if (parity == 2) {
-            if (c == 0x00) {
-                // A parity marked 0x00. This is the end message signal.
-                return;
-            }
-            // A character with parity mark.
-            // This should not happen as other charaters are not sent with a parity bit.
-            parity_errors++;
-            parity = 0;
-        }
+  uint8_t c;
+  enum parity_state parity = PAST_NONE;
+  unsigned int parity_errors = 0;
 
-        // Discard all character above the message limit and warn.
-        if (rx_len >= MAX_PACKET_SIZE) {
-            if (rx_len == MAX_PACKET_SIZE)
-                LOG_ERROR("Maximum packet size reached. Following characters ignored."
-                               "\tIs your serial connected and is it detecting breaks?");
-            continue;
-        }
-        rx_buf[rx_len++] = c;
+  rx_len = 0;
+  while (*abort != 1)
+  {
+    if (read(port, &c, 1) != 1) {
+      usleep(1000);
+      continue;
     }
+
+    if (c == break_chars[parity]) {
+      parity++;
+      if (parity == PAST_BREAK)  // break detected
+      {
+        parity = PAST_NONE;
+        if (rx_len > 0)         // if there is data it shall be provided.
+          return;
+      }
+      continue;                  // otherwise: ride on.
+    }
+    else if (parity != PAST_NONE)
+    {
+      parity_errors++;
+      parity = PAST_NONE;
+    }
+    else
+    {
+      // Discard all character above the message limit and warn.
+      if (rx_len >= MAX_PACKET_SIZE) {
+          if (rx_len == MAX_PACKET_SIZE)
+              LOG_ERROR("Maximum packet size reached. Following characters ignored."
+                             "\tIs your serial connected and is it detecting breaks?");
+          continue;
+      }
+      rx_buf[rx_len++] = c;
+    }
+  }
 }
 
 void rx_mac()
