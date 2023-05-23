@@ -31,7 +31,7 @@ enum ems_tel_type
   ETT_UBA_MON_FAST = 0x18,
   ETT_UBA_MON_SLOW = 0x19,
   ETT_UBA_MON_WWM = 0x34,
-  ETT_EMS_2_TELEGRAM = 0xF0
+  ETT_EMSPLUS = 0xFF
 }__attribute__((__packed__));
 
 SIZE_TEST(enum_ems_tel_type, enum ems_tel_type, 1);
@@ -138,6 +138,28 @@ struct ems_uba_monitor_slow
 
 SIZE_TEST(struct_ems_uba_monitor_slow, struct ems_uba_monitor_slow, 25);
 
+struct ems_plus_t01a5
+{
+  int16_t room_temp;
+} __attribute__((packed));
+
+union ems_plus_payload
+{
+  struct ems_plus_t01a5 t01a5;
+};
+
+enum emsplus_type
+{
+  EMSPLUS_01A5 = 0x01A5
+} __attribute__((packed));
+
+
+struct ems_plus_data
+{
+  enum emsplus_type type;
+  union ems_plus_payload d;
+} __attribute__((packed));
+
 
 union ems_telegram_data
 {
@@ -145,6 +167,7 @@ union ems_telegram_data
   struct ems_uba_monitor_fast uba_mon_fast;
   struct ems_uba_monitor_slow uba_mon_slow;
   struct ems_uba_monitor_wwm  uba_mon_wwm;
+  struct ems_plus_data emsplus;
 };
 
 struct ems_telegram_head

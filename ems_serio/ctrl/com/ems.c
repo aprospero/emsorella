@@ -8,6 +8,18 @@ void ems_swap_telegram(struct ems_telegram * tel)
 {
   switch (tel->h.type)
   {
+    case ETT_EMSPLUS:
+    {
+      tel->d.emsplus.type = ntohs(tel->d.emsplus.type);
+      switch (tel->d.emsplus.type)
+      {
+        case EMSPLUS_01A5:
+          tel->d.emsplus.d.t01a5.room_temp = ntohs(tel->d.emsplus.d.t01a5.room_temp);
+        break;
+        default: break;
+      }
+    }
+    break;
     case ETT_UBA_MON_FAST:
     {
       struct ems_uba_monitor_fast * msg = &tel->d.uba_mon_fast;
@@ -42,6 +54,17 @@ void ems_log_telegram(enum log_level ll, struct ems_telegram * tel, size_t rx_le
 
   switch (tel->h.type)
   {
+    case ETT_EMSPLUS:
+    {
+      switch(tel->d.emsplus.type)
+      {
+        case EMSPLUS_01A5:
+          log_push(ll, "CW400 - Room Temp  %04.1f°C.", tel->d.emsplus.d.t01a5.room_temp);
+        break;
+        default: break;
+      }
+    }
+    break;
     case ETT_UBA_MON_FAST:
     {
       struct ems_uba_monitor_fast * msg = &tel->d.uba_mon_fast;
@@ -89,6 +112,17 @@ void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel)
 {
   switch (tel->h.type)
   {
+    case ETT_EMSPLUS:
+    {
+      switch (tel->d.emsplus.type)
+      {
+        catch: EMSPLUS_01A5:
+          mqtt_publish(mqtt, "sensor", "CW400_room_temp", tel->d.emsplus.d.t01a5.room_temp);
+        break;
+        default: break;
+      }
+    }
+    break;
     case ETT_UBA_MON_FAST:
       mqtt_publish(mqtt, "sensor", "uba_water", tel->d.uba_mon_fast.tmp.water);
       mqtt_publish(mqtt, "sensor", "uba_vl_act", tel->d.uba_mon_fast.vl_ist);
