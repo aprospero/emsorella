@@ -6,8 +6,26 @@
 #include "tool/logger.h"
 #include "ctrl/com/mqtt.h"
 
-void ems_swap_telegram(struct ems_telegram * tel)
+struct ems_plus_t01a5       emsplus_t01a5;
+struct ems_uba_monitor_fast uba_mon_fast;
+struct ems_uba_monitor_slow uba_mon_slow;
+struct ems_uba_monitor_wwm  uba_mon_wwm;
+
+
+#define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) (MSG).MEMBER = ntohs((MSG).MEMBER); } while (0)
+#define CHECK_PUB(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER); } while (0)
+#define CHECK_PUB_TRIVAL(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, ((MSG).MEMBER)[0] + (((MSG).MEMBER)[1] << 8) + (((MSG).MEMBER)[0] << 16)); } while (0)
+#define CHECK_PUB_FLG(MSG,MEMBER,FLAG,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER.FLAG); } while (0)
+#define CHECK_PUB_FORMATTED(MSG,MEMBER,TYPE,ENTITY,FORMAT,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_formatted(mqtt, TYPE, ENTITY, FORMAT, (MSG).MEMBER); } while (0)
+
+#define HTONU_TRIVAL(VALUE) (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16))
+#define HTON_TRIVAL(VALUE)  (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16) + ((VALUE[2] >> 7) * 0xFF000000UL))
+
+
+
+void ems_swap_telegram(struct ems_telegram * tel, size_t len)
 {
+  len -= 5;
   switch (tel->h.type)
   {
     case ETT_EMSPLUS:
@@ -16,7 +34,11 @@ void ems_swap_telegram(struct ems_telegram * tel)
       switch (tel->d.emsplus.type)
       {
         case EMSPLUS_01A5:
-          tel->d.emsplus.d.t01a5.room_temp = ntohs(tel->d.emsplus.d.t01a5.room_temp);
+          memcpy(((uint8_t *) &emsplus_t01a5) + tel->h.offs, tel->d.emsplus.d.raw, len - sizeof(tel->d.emsplus.type));
+          SWAP_TEL_S(emsplus_t01a5, room_temp_act, tel->h.offs, len);
+          SWAP_TEL_S(emsplus_t01a5, mode_remain_time, tel->h.offs, len);
+          SWAP_TEL_S(emsplus_t01a5, prg_mode_remain_time, tel->h.offs, len);
+          SWAP_TEL_S(emsplus_t01a5, prg_mode_passed_time, tel->h.offs, len);
         break;
         default: break;
       }
@@ -24,26 +46,34 @@ void ems_swap_telegram(struct ems_telegram * tel)
     break;
     case ETT_UBA_MON_FAST:
     {
-      struct ems_uba_monitor_fast * msg = &tel->d.uba_mon_fast;
-      msg->err        = ntohs(msg->err);
-      msg->fl_current = ntohs(msg->fl_current);
-      msg->tmp.rl     = ntohs(msg->tmp.rl);
-      msg->tmp.tmp1   = ntohs(msg->tmp.tmp1);
-      msg->tmp.water  = ntohs(msg->tmp.water);
-      msg->vl_ist     = ntohs(msg->vl_ist);
+      memcpy(((uint8_t *) &uba_mon_fast) + tel->h.offs, tel->d.raw, len);
+      SWAP_TEL_S(uba_mon_fast, err, tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_fast, fl_current, tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_fast, tmp.rl, tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_fast, tmp.tmp1, tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_fast, tmp.water, tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_fast, vl_ist, tel->h.offs, len);
     }
     break;
     case ETT_UBA_MON_SLOW:
     {
-      struct ems_uba_monitor_slow * msg = &tel->d.uba_mon_slow;
-      msg->tmp_boiler  = ntohs(msg->tmp_boiler);
-      msg->tmp_exhaust = ntohs(msg->tmp_exhaust);
-      msg->tmp_out     = ntohs(msg->tmp_out);
+      memcpy(((uint8_t *) &uba_mon_slow) + tel->h.offs, tel->d.raw, len);
+      SWAP_TEL_S(uba_mon_slow, tmp_boiler, tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_slow, tmp_exhaust, tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_slow, tmp_out, tel->h.offs, len);
+      uba_mon_slow.burner_starts_sane = HTONU_TRIVAL(uba_mon_slow.burner_starts);
+      uba_mon_slow.run_time_heating_sane = HTON_TRIVAL(uba_mon_slow.run_time_heating);
+      uba_mon_slow.run_time_sane = HTON_TRIVAL(uba_mon_slow.run_time);
+      uba_mon_slow.run_time_stage_2_sane = HTON_TRIVAL(uba_mon_slow.run_time_stage_2);
     }
     break;
     case ETT_UBA_MON_WWM:
-      tel->d.uba_mon_wwm.ist[0] = ntohs(tel->d.uba_mon_wwm.ist[0]);
-      tel->d.uba_mon_wwm.ist[1] = ntohs(tel->d.uba_mon_wwm.ist[1]);
+      memcpy(((uint8_t *) &uba_mon_wwm) + tel->h.offs, tel->d.raw, len);
+      SWAP_TEL_S(uba_mon_wwm, ist[0], tel->h.offs, len);
+      SWAP_TEL_S(uba_mon_wwm, ist[1], tel->h.offs, len);
+      uba_mon_wwm.op_time_sane = HTONU_TRIVAL(uba_mon_wwm.op_time);
+      uba_mon_wwm.op_count_sane = HTONU_TRIVAL(uba_mon_wwm.op_count);
+
     break;
     default: break;
   }
@@ -119,7 +149,7 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
 
 }
 
-void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel)
+void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel, size_t len)
 {
   len -= 5;
   switch (tel->h.type)
@@ -139,45 +169,45 @@ void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel)
     }
     break;
     case ETT_UBA_MON_FAST:
-      mqtt_publish(mqtt, "sensor", "uba_water", tel->d.uba_mon_fast.tmp.water);
-      mqtt_publish(mqtt, "sensor", "uba_vl_act", tel->d.uba_mon_fast.vl_ist);
-      mqtt_publish(mqtt, "sensor", "uba_vl_nom", tel->d.uba_mon_fast.vl_soll);
-      mqtt_publish(mqtt, "relay","uba_on_pump", tel->d.uba_mon_fast.on.pump);
-      mqtt_publish(mqtt, "relay","uba_on_gas", tel->d.uba_mon_fast.on.gas);
-      mqtt_publish(mqtt, "relay","uba_on_valve", tel->d.uba_mon_fast.on.valve);
-      mqtt_publish(mqtt, "relay","uba_on_blower", tel->d.uba_mon_fast.on.blower);
-      mqtt_publish(mqtt, "relay","uba_on_circ", tel->d.uba_mon_fast.on.circ);
-      mqtt_publish(mqtt, "relay","uba_on_igniter", tel->d.uba_mon_fast.on.ignite);
-      mqtt_publish(mqtt, "sensor","uba_power_act", tel->d.uba_mon_fast.ks_akt_p);
-      mqtt_publish(mqtt, "sensor","uba_power_max", tel->d.uba_mon_fast.ks_max_p);
-      mqtt_publish(mqtt, "sensor", "uba_flame_current", tel->d.uba_mon_fast.fl_current);
-      mqtt_publish(mqtt, "sensor", "uba_error", tel->d.uba_mon_fast.err);
-      mqtt_publish_formatted(mqtt, "sensor", "uba_service_code", "%.2s", tel->d.uba_mon_fast.service_code, tel->d.uba_mon_fast.service_code);
+      CHECK_PUB(uba_mon_fast, tmp.water,"sensor", "uba_water", tel->h.offs, len);
+      CHECK_PUB(uba_mon_fast, vl_ist, "sensor", "uba_vl_act", tel->h.offs, len);
+      CHECK_PUB(uba_mon_fast, vl_soll, "sensor", "uba_vl_nom", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_fast, on, pump, "relay","uba_on_pump", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_fast, on, gas, "relay","uba_on_gas", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_fast, on, valve, "relay","uba_on_valve", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_fast, on, blower, "relay","uba_on_blower", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_fast, on, circ, "relay","uba_on_circ", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_fast, on, ignite, "relay","uba_on_igniter", tel->h.offs, len);
+      CHECK_PUB(uba_mon_fast, ks_akt_p, "sensor","uba_power_act", tel->h.offs, len);
+      CHECK_PUB(uba_mon_fast, ks_max_p, "sensor","uba_power_max", tel->h.offs, len);
+      CHECK_PUB(uba_mon_fast, fl_current, "sensor", "uba_flame_current", tel->h.offs, len);
+      CHECK_PUB(uba_mon_fast, err,        "sensor", "uba_error", tel->h.offs, len);
+      CHECK_PUB_FORMATTED(uba_mon_fast, service_code, "sensor", "uba_service_code", "%.2s", tel->h.offs, len);
     break;
     case ETT_UBA_MON_SLOW:
-      mqtt_publish(mqtt, "sensor", "uba_outside", tel->d.uba_mon_slow.tmp_out);
-      mqtt_publish(mqtt, "sensor", "uba_rt", TRIVAL(tel->d.uba_mon_slow.run_time));
-      mqtt_publish(mqtt, "sensor", "uba_pump_mod", tel->d.uba_mon_slow.pump_mod);
- //     mqtt_publish(mqtt, "sensor", "uba_rt_heating", TRIVAL(tel->d.uba_mon_slow.run_time_heating));
- //     mqtt_publish(mqtt, "sensor", "uba_rt_stage2", TRIVAL(tel->d.uba_mon_slow.run_time_stage_2));
- //     mqtt_publish(mqtt, "sensor", "uba_burner_starts", TRIVAL(tel->d.uba_mon_slow.burner_starts));
+      CHECK_PUB(uba_mon_slow, tmp_out      , "sensor", "uba_outside" , tel->h.offs, len);
+      CHECK_PUB(uba_mon_slow, run_time_sane, "sensor", "uba_rt"      , tel->h.offs, len);
+      CHECK_PUB(uba_mon_slow, pump_mod     , "sensor", "uba_pump_mod", tel->h.offs, len);
+//      CHECK_PUB(uba_mon_slow, run_time_heating, "sensor", "uba_rt_heating", tel->h.offs, len);
+//      CHECK_PUB(uba_mon_slow, run_time_stage_2, "sensor", "uba_rt_stage2", tel->h.offs, len);
+//      CHECK_PUB(uba_mon_slow, burner_starts, "sensor", "uba_burner_starts", tel->h.offs, len);
     break;
     case ETT_UBA_MON_WWM:
-      mqtt_publish(mqtt, "sensor", "uba_ww_act1", tel->d.uba_mon_wwm.ist[0]);
-      mqtt_publish(mqtt, "sensor", "uba_ww_nom", tel->d.uba_mon_wwm.soll);
-      mqtt_publish(mqtt, "relay", "uba_ww_circ_active", tel->d.uba_mon_wwm.circ_active);
-      mqtt_publish(mqtt, "relay", "uba_ww_circ_daylight", tel->d.uba_mon_wwm.circ_daylight);
-      mqtt_publish(mqtt, "relay", "uba_ww_circ_manual", tel->d.uba_mon_wwm.circ_manual);
-      mqtt_publish(mqtt, "relay", "uba_ww_loading", tel->d.uba_mon_wwm.is_loading);
-      mqtt_publish(mqtt, "relay", "uba_ww_active", tel->d.uba_mon_wwm.active);
-      mqtt_publish(mqtt, "relay", "uba_ww_single_load", tel->d.uba_mon_wwm.single_load);
-      mqtt_publish(mqtt, "relay", "uba_ww_reloading", tel->d.uba_mon_wwm.reloading);
-      mqtt_publish(mqtt, "relay", "uba_ww_daylight", tel->d.uba_mon_wwm.daylight_mode);
-      mqtt_publish(mqtt, "relay", "uba_ww_desinfect", tel->d.uba_mon_wwm.desinfect);
-      mqtt_publish(mqtt, "relay", "uba_ww_fail_desinfect", tel->d.uba_mon_wwm.fail_desinfect);
-      mqtt_publish(mqtt, "relay", "uba_ww_fail_probe1", tel->d.uba_mon_wwm.fail_probe_1);
-      mqtt_publish(mqtt, "relay", "uba_ww_fail_probe2", tel->d.uba_mon_wwm.fail_probe_2);
-      mqtt_publish(mqtt, "relay", "uba_ww_fail", tel->d.uba_mon_wwm.fail_ww);
+      CHECK_PUB(uba_mon_wwm, ist[0],"sensor", "uba_ww_act1", tel->h.offs, len);
+      CHECK_PUB(uba_mon_wwm, soll,"sensor", "uba_ww_nom", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_active, "relay", "uba_ww_circ_active", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_daylight, "relay", "uba_ww_circ_daylight", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_manual, "relay", "uba_ww_circ_manual", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw2, is_loading, "relay", "uba_ww_loading", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw1, active, "relay", "uba_ww_active", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw1, single_load, "relay", "uba_ww_single_load", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw1, reloading, "relay", "uba_ww_reloading", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw1, daylight_mode, "relay", "uba_ww_daylight", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, sw1, desinfect, "relay", "uba_ww_desinfect", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, fail, desinfect, "relay", "uba_ww_fail_desinfect", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, fail, probe_1, "relay", "uba_ww_fail_probe1", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, fail, probe_2, "relay", "uba_ww_fail_probe2", tel->h.offs, len);
+      CHECK_PUB_FLG(uba_mon_wwm, fail, ww, "relay", "uba_ww_fail", tel->h.offs, len);
     break;
     default: break;
   }
