@@ -95,7 +95,7 @@ void handle_poll() {
     // Todo: Release the bus after sending a message (does not work)
     if (tx_retries < 0 || tx_retries > MAX_TX_RETRIES) {
         if (tx_retries > MAX_TX_RETRIES) {
-            LOG_ERROR("TX failed 5 times. Dropping message.");
+//            LOG_ERROR("TX failed 5 times. Dropping message.");
             tx_retries = -1;
         }
         // Pick a new message
@@ -114,7 +114,7 @@ void handle_poll() {
 
     gettimeofday(&now, NULL);
     have_bus = (now.tv_sec - got_bus.tv_sec) * 1000 + (now.tv_usec - got_bus.tv_usec) / 1000;
-    LOG_INFO("Occupying bus since %li ms", have_bus);
+//    LOG_INFO("Occupying bus since %li ms", have_bus);
 
     if (tx_retries >= 0 && have_bus < MAX_BUS_TIME) {
         if ((size_t)tx_packet(tx_buf, tx_len) == tx_len) {
@@ -122,7 +122,7 @@ void handle_poll() {
             if (tx_buf[1] == 0x00) {
                 // Release bus
                 if (tx_packet(&client_id, 1) != 1) {
-                    LOG_ERROR("TX poll reply failed");
+//                    LOG_ERROR("TX poll reply failed");
                 }
                 state = RELEASED;
             } else if (tx_buf[1] & 0x80) {
@@ -136,14 +136,14 @@ void handle_poll() {
                 state = WROTE;
             }
         } else {
-            LOG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
+//            LOG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
             tx_retries++;
             state = RELEASED;
         }
     } else {
         // Nothing to send.
         if (tx_packet(&client_id, 1) != 1) {
-            LOG_ERROR("TX poll reply failed");
+//            LOG_ERROR("TX poll reply failed");
         }
         state = RELEASED;
     }

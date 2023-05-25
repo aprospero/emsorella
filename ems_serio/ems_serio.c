@@ -129,12 +129,12 @@ int main(int argc, char *argv[]) {
     if (mqtt == NULL)
       LOG_ERROR("Could not initialize mqtt API.\n");
 
-    if (argc < 3) {
-      LOG_ERROR("Usage: %s <ttypath> <logmask>\n", argv[0]);
+    if (argc < 2) {
+      LOG_ERROR("Usage: %s <ttypath> [logmask:default=error]\n", argv[0]);
         return(-1);
     }
-
-//    log_set_level(atoi(argv[2]), TRUE);
+    if (argc == 3)
+      log_set_level(atoi(argv[2]), TRUE);
     ret = start(argv[1]);
 
     // Set signal handler and wait for the thread

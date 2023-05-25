@@ -134,7 +134,7 @@ void rx_mac()
   } else if (rx_buf[0] >= 0x08 && rx_buf[0] < 0x80) {
       // Bus release.
       if (state != ASSIGNED) {
-        LOG_DEBUG("Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
+ //       LOG_DEBUG("Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
           stats.rx_mac_errors++;
       }
       polled_id = 0;
@@ -142,7 +142,7 @@ void rx_mac()
   } else if (rx_buf[0] & 0x80) {
       // Bus assign. We may not be in released state it the queried device did not exist.
       if (state != RELEASED && state != ASSIGNED) {
-          LOG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
+ //         LOG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
           stats.rx_mac_errors++;
       }
       polled_id = rx_buf[0] & 0x7f;
@@ -153,7 +153,7 @@ void rx_mac()
           state = ASSIGNED;
       }
   } else {
-      LOG_DEBUG("Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
+//      LOG_DEBUG("Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
       stats.rx_mac_errors++;
   }
 }
@@ -180,13 +180,14 @@ void rx_done() {
     if (crc != rx_buf[rx_len-1])
     {
       LOG_ERROR("Got an CRC error: 0x%02X : 0x%02X.", crc, rx_buf[rx_len-1]);
+      print_telegram(0, LL_ERROR, "CRC-ERROR", rx_buf, rx_len);
     }
     else
     {
       struct ems_telegram * tel = (struct ems_telegram *) rx_buf;
-      ems_swap_telegram(tel);
-      ems_log_telegram(LL_INFO, tel, rx_len);
-      ems_publish_telegram(mqtt, tel);
+      ems_swap_telegram(tel, rx_len);
+      ems_log_telegram(tel, rx_len);
+      ems_publish_telegram(mqtt, tel, rx_len);
     }
 
     // The MASTER_ID can always send when the bus is not assigned (as it's senseless to poll himself).
@@ -198,16 +199,14 @@ void rx_done() {
         state = RELEASED;
     } else if (state == ASSIGNED) {
         if (rx_buf[0] != polled_id && rx_buf[0] != MASTER_ID) {
-            LOG_ERROR("Ignored package from 0x%02hhx instead of polled 0x%02hhx or MASTER_ID",
-                   rx_buf[0], polled_id);
+//            LOG_ERROR("Ignored package from 0x%02hhx instead of polled 0x%02hhx or MASTER_ID", rx_buf[0], polled_id);
             stats.rx_sender++;
             return;
         }
         dst = rx_buf[1] & 0x7f;
         if (rx_buf[1] & 0x80) {
             if (dst < 0x08) {
-                LOG_ERROR("Ignored read from 0x%02hhx to invalid address 0x%02hhx",
-                    rx_buf[0], dst);
+ //               LOG_ERROR("Ignored read from 0x%02hhx to invalid address 0x%02hhx",  rx_buf[0], dst);
                 stats.rx_format++;
                 return;
             }
@@ -219,8 +218,7 @@ void rx_done() {
             state = READ;
         } else {
             if (dst > 0x00 && dst < 0x08) {
-                LOG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx",
-                    rx_buf[0], dst);
+ //               LOG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx", rx_buf[0], dst);
                 stats.rx_format++;
                 return;
             }
@@ -233,8 +231,7 @@ void rx_done() {
         // Handle immediate read response.
         state = ASSIGNED;
         if (memcmp(read_expected, rx_buf, HDR_LEN)) {
-            LOG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",
-                rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
+//            LOG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",  rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
             stats.rx_format++;
             return;
         }
@@ -242,11 +239,11 @@ void rx_done() {
             handle_poll();
         }
     } else if (state == WROTE) {
-        LOG_ERROR("Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
+//        LOG_ERROR("Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
         stats.rx_sender++;
         return;
     } else if (rx_buf[0] != MASTER_ID) {
-        LOG_ERROR("Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
+//        LOG_ERROR("Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
         stats.rx_sender++;
         return;
     }
