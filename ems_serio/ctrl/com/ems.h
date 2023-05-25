@@ -167,7 +167,26 @@ SIZE_TEST(struct_ems_uba_monitor_slow, struct ems_uba_monitor_slow, 41);
 
 struct ems_plus_t01a5
 {
-  int16_t room_temp;
+  int16_t room_temp_act;      // 0.1°
+  uint8_t winter_mode;
+  uint8_t room_temp_nom;      // 0.5°
+  uint8_t vl_temp_nom;        // 1.0°
+  uint8_t res0;
+  uint8_t prg_room_temp_act;  // 0.5°
+  uint8_t prg_room_temp_nom;  // 0.5°
+  uint16_t mode_remain_time;  // 1 min
+  uint8_t mode_manual:1;
+  uint8_t mode_heat_hilo:1;
+  uint8_t res1:6;
+  uint8_t prg_mode_manual:1;
+  uint8_t prg_mode_heat_hilo:1;
+  uint8_t res2:6;
+  uint8_t next_mode_manual:1;
+  uint8_t next_mode_heat_hilo:1;
+  uint8_t res3:6;
+  uint16_t prg_mode_remain_time;  // 1 min
+  uint16_t prg_mode_passed_time;  // 1 min
+  uint8_t res4[7];
 } __attribute__((packed));
 
 union ems_plus_payload
