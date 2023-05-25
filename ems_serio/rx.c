@@ -61,7 +61,8 @@ enum parity_state
   PAST_NONE,
   PAST_ESCAPED,
   PAST_ZEROED,
-  PAST_BREAK
+  PAST_BREAK,
+  PAST_ERROR
 };
 
 const uint8_t break_chars[] = { 0xFFu, 0x00U, 0x00U };
@@ -70,42 +71,70 @@ const uint8_t break_chars[] = { 0xFFu, 0x00U, 0x00U };
 void rx_packet(int *abort) {
 
   uint8_t c;
+  size_t valid_char;
   enum parity_state parity = PAST_NONE;
   unsigned int parity_errors = 0;
 
   rx_len = 0;
+
   while (*abort != 1)
   {
+    valid_char = FALSE;
     if (read(port, &c, 1) != 1) {
       usleep(1000);
       continue;
     }
 
-    if (c == break_chars[parity]) {
-      parity++;
-      if (parity == PAST_BREAK)  // break detected
-      {
+    switch (parity)
+    {
+      case PAST_NONE:
+        if (c == 0xFFU)
+          parity = PAST_ESCAPED;
+        else
+          valid_char = TRUE;
+        break;
+      case PAST_ESCAPED:
+        if (c != 0x00U)
+        {
+          if (c == 0xFFU)
+          {
+            valid_char = TRUE;
+            parity = PAST_NONE;
+          }
+          else
+            parity = PAST_ERROR;
+        }
+        else
+          parity = PAST_ZEROED;
+        break;
+      case PAST_ZEROED:
+        if (c != 0x00U)
+          parity = PAST_NONE;
+        else
+          parity = PAST_BREAK;
+        break;
+      case PAST_ERROR:
         parity = PAST_NONE;
-        if (rx_len > 0)         // if there is data it shall be provided.
-          return;
-      }
-      continue;                 // otherwise: ride on.
+        break;
     }
-    else if (parity != PAST_NONE)
+    if (valid_char)
     {
-      parity_errors++;
-      parity = PAST_NONE;
-    }
-    else
-    {
-      // Discard all character above the message limit and warn.
-      if (rx_len >= MAX_PACKET_SIZE) {
-          if (rx_len == MAX_PACKET_SIZE)
-              LOG_ERROR("Maximum packet size reached. Following characters ignored."
-                             "\tIs your serial connected and is it detecting breaks?");
-          continue;
-      }
       rx_buf[rx_len++] = c;
+
+      if (rx_len >= MAX_PACKET_SIZE)
+      {
+        LOG_ERROR("Maximum packet size reached. Following characters ignored.");
+        print_telegram(0, LL_INFO, "ABANDONED", rx_buf, rx_len);
+        rx_len = 0;
+      }
+    }
+    else if (parity == PAST_BREAK)
+    {
+      parity = PAST_NONE;
+      if (rx_len == 1 || calc_crc(rx_buf, rx_len - 1) == rx_buf[rx_len - 1])         // if there is valid data it shall be provided.
+        return;
+      print_telegram(0, LL_ERROR, "CRC_ERR", rx_buf, rx_len);
+      rx_len = 0;
     }
   }
 }
