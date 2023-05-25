@@ -21,7 +21,7 @@ uint8_t crc_lookup_table[] = {
     0xF9, 0xFB, 0xFD, 0xFF, 0xF1, 0xF3, 0xF5, 0xF7, 0xE9, 0xEB, 0xED, 0xEF, 0xE1, 0xE3, 0xE5, 0xE7
 };
 
-#if 1
+
 uint8_t calc_crc(uint8_t *data, ssize_t len) {
     uint8_t crc = 0;
 
@@ -31,18 +31,3 @@ uint8_t calc_crc(uint8_t *data, ssize_t len) {
     }
     return(crc);
 }
-#else
-uint8_t calc_crc(uint8_t *data, ssize_t len)
-{
-   uint8_t result = 0;
-   for (int i = 0 ; i < len; i++)
-   {
-     result ^= data[i];
-     if (result & 0x80U)
-       result ^= 0X0C;
-     result = (result << 1) | (result >> 7);
-   }
-   return result;
-
-}
-#endif
