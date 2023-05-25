@@ -89,7 +89,7 @@ void rx_packet(int *abort) {
         if (rx_len > 0)         // if there is data it shall be provided.
           return;
       }
-      continue;                  // otherwise: ride on.
+      continue;                 // otherwise: ride on.
     }
     else if (parity != PAST_NONE)
     {
@@ -118,7 +118,7 @@ void rx_mac()
   // - Broadcast a message (destination is 0x00) (no response)
   // - Send a write request to another device (destination is device ID) (ACKed with 0x01)
   // - Read another device (desination is ORed with 0x80) (Answer comes immediately)
-  print_packet(0, LL_DEBUG_MORE, "MAC", rx_buf, rx_len);
+  print_telegram(0, LL_DEBUG_MORE, "MAC", rx_buf, rx_len);
   if (rx_buf[0] == 0x01) {
       // Got an ACK. Warn if there was no write from the bus-owning device.
       if (state != WROTE) {
@@ -166,8 +166,6 @@ void rx_done() {
     // Handle MAC packages first. They always have length 1.
     if (rx_len == 1)
       return rx_mac();
-
-    print_packet(0, LL_INFO, "DATA", rx_buf, rx_len);
 
     stats.rx_total++;
     if (rx_len < 6) {

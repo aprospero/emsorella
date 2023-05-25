@@ -44,21 +44,6 @@ void print_stats() {
     LOG_INFO("TX failures             %d", stats.tx_fail);
 }
 
-void print_packet(int out, enum log_level loglevel, const char * prefix, uint8_t *msg, size_t len) {
-    if (!log_get_level(loglevel))
-        return;
-    char text[3 + MAX_PACKET_SIZE * 3 + 2 + 1];
-    int pos = 0;
-    pos += sprintf(&text[0], "%s (%d) %cX:", prefix, len, out ? 'T' : 'R');
-
-    for (size_t i = 0; i < len; i++) {
-        pos += sprintf(&text[pos], " %02hhx", msg[i]);
-        if (i == 3 || i == len - 2) {
-            pos += sprintf(&text[pos], " ");
-        }
-    }
-    log_push(loglevel, "%s", text);
-}
 
 void stop_handler() {
     close_queues();

@@ -5,6 +5,7 @@
 
 #include "queue.h"
 #include "serial.h"
+#include "ctrl/com/ems.h"
 #include "ems_serio.h"
 #include "rx.h"
 #include "crc.h"
@@ -37,7 +38,7 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
     size_t i;
     uint8_t echo;
 
-    print_packet(1, LL_INFO, "WOULD SEND", msg, len);
+    print_telegram(1, LL_INFO, "WOULD SEND", msg, len);
 
     len = 0; // we never send anything at all.
 

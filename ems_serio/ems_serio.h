@@ -9,4 +9,3 @@ extern pthread_t readloop;
 
 int start(char *);
 int stop();
-void print_packet(int out, enum log_level loglevel, const char * prefix, uint8_t *msg, size_t len);

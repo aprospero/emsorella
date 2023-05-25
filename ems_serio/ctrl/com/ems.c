@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include <arpa/inet.h>
+#include <string.h>
 
 #include "ems.h"
 #include "tool/logger.h"
@@ -168,3 +170,18 @@ void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel)
   }
 }
 
+void print_telegram(int out, enum log_level loglevel, const char * prefix, uint8_t *msg, size_t len) {
+    if (!log_get_level(loglevel))
+        return;
+    char text[3 + len * 3 + 2 + 1 + strlen(prefix) + 8];
+    int pos = 0;
+    pos += sprintf(&text[0], "%s (%02d) %cX:", prefix, len, out ? 'T' : 'R');
+
+    for (size_t i = 0; i < len; i++) {
+        pos += sprintf(&text[pos], " %02hhx", msg[i]);
+        if (i == 3 || i == len - 2) {
+            pos += sprintf(&text[pos], " ");
+        }
+    }
+    log_push(loglevel, "%s", text);
+}
