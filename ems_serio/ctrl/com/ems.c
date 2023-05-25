@@ -11,6 +11,46 @@ struct ems_uba_monitor_fast uba_mon_fast;
 struct ems_uba_monitor_slow uba_mon_slow;
 struct ems_uba_monitor_wwm  uba_mon_wwm;
 
+struct entity_params
+{
+  size_t   offs;
+  size_t   size;
+  uint32_t mask;
+  const char * fmt;
+  const char * type;
+  const char * entity;
+  time_t       last_publish;
+};
+
+
+struct entity_params uba_mon_fast_params[] =
+{
+  { offsetof(struct ems_uba_monitor_fast, tmp.water   ), sizeof(uba_mon_fast.tmp.water   ), 0xFFFFFFFF, "%d",   "sensor", "uba_water"        },
+  { offsetof(struct ems_uba_monitor_fast, vl_ist      ), sizeof(uba_mon_fast.vl_ist      ), 0xFFFFFFFF, "%d",   "sensor", "uba_vl_act"       },
+  { offsetof(struct ems_uba_monitor_fast, vl_soll     ), sizeof(uba_mon_fast.vl_soll     ), 0xFFFFFFFF, "%u",   "sensor", "uba_vl_nom"       },
+  { offsetof(struct ems_uba_monitor_fast, on          ), sizeof(uba_mon_fast.on          ), 0x00000020, "%u",   "relay" , "uba_on_pump"      },
+  { offsetof(struct ems_uba_monitor_fast, on          ), sizeof(uba_mon_fast.on          ), 0x00000001, "%u",   "relay" , "uba_on_gas"       },
+  { offsetof(struct ems_uba_monitor_fast, on          ), sizeof(uba_mon_fast.on          ), 0x00000040, "%u",   "relay" , "uba_on_valve"     },
+  { offsetof(struct ems_uba_monitor_fast, on          ), sizeof(uba_mon_fast.on          ), 0x00000004, "%u",   "relay" , "uba_on_blower"    },
+  { offsetof(struct ems_uba_monitor_fast, on          ), sizeof(uba_mon_fast.on          ), 0x00000080, "%u",   "relay" , "uba_on_circ"      },
+  { offsetof(struct ems_uba_monitor_fast, on          ), sizeof(uba_mon_fast.on          ), 0x00000008, "%u",   "relay" , "uba_on_igniter"   },
+  { offsetof(struct ems_uba_monitor_fast, ks_akt_p    ), sizeof(uba_mon_fast.ks_akt_p    ), 0xFFFFFFFF, "%u",   "sensor", "uba_power_act"    },
+  { offsetof(struct ems_uba_monitor_fast, ks_max_p    ), sizeof(uba_mon_fast.ks_max_p    ), 0xFFFFFFFF, "%u",   "sensor", "uba_power_max"    },
+  { offsetof(struct ems_uba_monitor_fast, fl_current  ), sizeof(uba_mon_fast.fl_current  ), 0xFFFFFFFF, "%u",   "sensor", "uba_flame_current"},
+  { offsetof(struct ems_uba_monitor_fast, err         ), sizeof(uba_mon_fast.err         ), 0xFFFFFFFF, "%u",   "sensor", "uba_error"        },
+  { offsetof(struct ems_uba_monitor_fast, service_code), sizeof(uba_mon_fast.service_code), 0xFFFFFFFF, "%.2s", "sensor", "uba_service_code" }
+};
+
+struct entity_params uba_mon_slow_params[] =
+{
+  { offsetof(struct ems_uba_monitor_slow, tmp_out)              , sizeof(uba_mon_slow.tmp_out)              , 0xFFFFFFFF, "%d",   "sensor", "uba_water"     },
+  { offsetof(struct ems_uba_monitor_slow, run_time)             , sizeof(uba_mon_slow.run_time)             , 0xFFFFFFFF, "%d",   "sensor", "uba_vl_act"    },
+  { offsetof(struct ems_uba_monitor_slow, pump_mod)             , sizeof(uba_mon_slow.pump_mod)             , 0xFFFFFFFF, "%u",   "sensor", "uba_vl_nom"    },
+  { offsetof(struct ems_uba_monitor_slow, run_time_heating_sane), sizeof(uba_mon_slow.run_time_heating_sane), 0xFFFFFFFF, "%u",   "relay" , "uba_on_pump"   },
+  { offsetof(struct ems_uba_monitor_slow, run_time_stage_2_sane), sizeof(uba_mon_slow.run_time_stage_2_sane), 0xFFFFFFFF, "%u",   "relay" , "uba_on_gas"    },
+  { offsetof(struct ems_uba_monitor_slow, burner_starts_sane   ), sizeof(uba_mon_slow.burner_starts_sane)   , 0xFFFFFFFF, "%u",   "relay" , "uba_on_valve"  }
+};
+
 
 #define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) (MSG).MEMBER = ntohs((MSG).MEMBER); } while (0)
 #define CHECK_PUB(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER); } while (0)
