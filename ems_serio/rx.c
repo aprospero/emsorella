@@ -18,7 +18,7 @@
 size_t rx_len;
 uint8_t rx_buf[MAX_PACKET_SIZE];
 enum STATE state = RELEASED;
-uint8_t polled_id;
+uint8_t polled_id = 0;
 uint8_t read_expected[HDR_LEN];
 struct timeval got_bus;
 static uint8_t client_id = 0x0BU;
@@ -141,8 +141,8 @@ void rx_packet(int *abort) {
 
 void rx_mac()
 {
-  // MASTER_ID poll requests (bus assigns) have bit 7 set (0x80).
-  // Bus release messages is the device ID, between 8 and 127 (0x08-0x7f).
+  // MASTER_ID poll requests (bus assigns) have bit 7 cleared (0x80), since it's HT3 we're talking here.
+  // Bus release messages is the device ID, between 8 and 127 (0x08-0x7f) with bit 7 set.
   // When a device has the bus, it can:
   // - Broadcast a message (destination is 0x00) (no response)
   // - Send a write request to another device (destination is device ID) (ACKed with 0x01)
@@ -217,6 +217,7 @@ void rx_done() {
       ems_swap_telegram(tel, rx_len);
       ems_log_telegram(tel, rx_len);
       ems_publish_telegram(mqtt, tel, rx_len);
+      return;
     }
 
     // The MASTER_ID can always send when the bus is not assigned (as it's senseless to poll himself).
@@ -224,7 +225,7 @@ void rx_done() {
     // sends while this program still thinks the bus is assigned.
     // So simply accept messages from the MASTER_ID and reset the state if it was not a read request
     // from a device to the MASTER_ID
-    if (rx_buf[0] == 0x08 && (state != READ || memcmp(read_expected, rx_buf, HDR_LEN))) {
+    if (rx_buf[0] == 0x88 && (state != READ || memcmp(read_expected, rx_buf, HDR_LEN))) {
         state = RELEASED;
     } else if (state == ASSIGNED) {
         if (rx_buf[0] != polled_id && rx_buf[0] != MASTER_ID) {
