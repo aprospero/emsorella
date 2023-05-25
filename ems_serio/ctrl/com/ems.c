@@ -105,11 +105,11 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
       log_push(LL_DEBUG, "Mon WWM   Ist: %04.1f°C/%04.1f°C  Soll: %04.1f °C     Lädt: %s      Durchfluss: %04.1f l/m."
           , NANVAL(msg->ist[0]), NANVAL(msg->ist[1]), 1.0f * msg->soll, ONOFF(msg->sw2.is_loading), NANVA8(msg->throughput));
       log_push(LL_DEBUG, "  len: % 2u Circ: %s       Man: %s       Day: %s      Single: %s      Day: %s       Reload: %s.", len
-                ,ONOFF(msg->circ_active), ONOFF(msg->circ_manual), ONOFF(msg->sw2.circ_daylight), ONOFF(msg->sw1.single_load ), ONOFF(msg->sw1.daylight_mode), ONOFF(msg->sw1.reloading));
+                ,ONOFF(msg->sw2.circ_active), ONOFF(msg->sw2.circ_manual), ONOFF(msg->sw2.circ_daylight), ONOFF(msg->sw1.single_load ), ONOFF(msg->sw1.daylight_mode), ONOFF(msg->sw1.reloading));
       log_push(LL_DEBUG, "  src: %02X Type: %02X    prod: %s    Detox: %s     count: % 8u   time: % 8u min   temp: %s.", tel->h.src
-                , msg->type, ONOFF(msg->sw1.active), ONOFF(msg->sw1.desinfect), TRIVAL(msg->op_count), TRIVAL(msg->op_time), msg->temp_ok ? " OK" : "NOK");
+                , msg->type, ONOFF(msg->sw1.active), ONOFF(msg->sw1.desinfect), TRIVAL(msg->op_count), TRIVAL(msg->op_time), msg->sw1.temp_ok ? " OK" : "NOK");
       log_push(LL_DEBUG, "  dst: %02X WWErr: %s    PR1Err: %s   PR2Err: %s   DesErr: %s.", tel->h.dst
-               , ONOFF(msg->fail_ww), ONOFF(msg->fail_probe_1), ONOFF(msg->fail_probe_2), ONOFF(msg->fail_desinfect));
+               , ONOFF(msg->fail.ww), ONOFF(msg->fail.probe_1), ONOFF(msg->fail.probe_2), ONOFF(msg->fail.desinfect));
     }
     break;
     default:

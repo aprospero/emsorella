@@ -53,9 +53,9 @@ SIZE_TEST(struct_ems_uba_component_state, struct ems_uba_component_state, 1);
 
 struct ems_uba_temperatures
 {
-  uint16_t  tmp1;
-  uint16_t  water;
-  uint16_t  rl;
+  int16_t  tmp1;
+  int16_t  water;
+  int16_t  rl;
 } __attribute__((packed));
 
 SIZE_TEST(struct_ems_uba_temperatures, struct ems_uba_temperatures, 6);
@@ -63,8 +63,8 @@ SIZE_TEST(struct_ems_uba_temperatures, struct ems_uba_temperatures, 6);
 
 struct ems_uba_monitor_fast
 {
-  uint8_t vl_soll;
-  uint16_t vl_ist;
+  uint8_t  vl_soll;
+  int16_t  vl_ist;
   uint8_t  ks_max_p;
   uint8_t  ks_akt_p;
   uint16_t res0;
@@ -89,44 +89,65 @@ enum ems_uba_mon_wwm_type
   EUMW_TYPE_STORAGE        = 0x03
 } __attribute__((packed));
 
-struct ems_uba_monitor_wwm
+struct ems_uba_mon_wwm_sw1
 {
-  uint8_t  soll;
-  uint16_t ist[2];
-
   uint8_t daylight_mode:1;
   uint8_t single_load:1;
   uint8_t desinfect:1;
   uint8_t active:1;
   uint8_t reloading:1;
   uint8_t temp_ok:1;
-  uint8_t res1:2;
+  uint8_t res:2;
+} __attribute__((packed));
 
-  uint8_t fail_probe_1:1;
-  uint8_t fail_probe_2:1;
-  uint8_t fail_ww:1;
-  uint8_t fail_desinfect:1;
-  uint8_t res2:4;
+struct ems_uba_mon_wwm_fails
+{
+  uint8_t probe_1:1;
+  uint8_t probe_2:1;
+  uint8_t ww:1;
+  uint8_t desinfect:1;
+  uint8_t res:4;
+} __attribute__((packed));
 
+
+struct ems_uba_mon_wwm_sw2
+{
   uint8_t circ_daylight:1;
   uint8_t circ_manual:1;
   uint8_t circ_active:1;
   uint8_t is_loading:1;
-  uint8_t res3:4;
+  uint8_t res:4;
+} __attribute__((packed));
+
+
+
+struct ems_uba_monitor_wwm
+{
+  int8_t  soll;
+  int16_t ist[2];
+
+  struct ems_uba_mon_wwm_sw1 sw1;
+
+  struct ems_uba_mon_wwm_fails fail;
+
+  struct ems_uba_mon_wwm_sw2 sw2;
 
   enum ems_uba_mon_wwm_type type;
   uint8_t throughput;
   uint8_t op_time[3];
   uint8_t op_count[3];
+
+  uint32_t op_time_sane;
+  uint32_t op_count_sane;
 } __attribute__((packed));
 
-SIZE_TEST(struct_ems_uba_monitor_wwm, struct ems_uba_monitor_wwm, 16);
+SIZE_TEST(struct_ems_uba_monitor_wwm, struct ems_uba_monitor_wwm, 24);
 
 struct ems_uba_monitor_slow
 {
-  uint16_t tmp_out;
-  uint16_t tmp_boiler;
-  uint16_t tmp_exhaust;
+  int16_t tmp_out;
+  int16_t tmp_boiler;
+  int16_t tmp_exhaust;
   uint8_t res1[3];
   uint8_t pump_mod;
   uint8_t burner_starts[3];
@@ -134,9 +155,15 @@ struct ems_uba_monitor_slow
   uint8_t run_time_stage_2[3];
   uint8_t run_time_heating[3];
   uint8_t time_res[3];
+
+  uint32_t burner_starts_sane;
+  uint32_t run_time_sane;
+  uint32_t run_time_stage_2_sane;
+  uint32_t run_time_heating_sane;
+
 } __attribute__((packed));
 
-SIZE_TEST(struct_ems_uba_monitor_slow, struct ems_uba_monitor_slow, 25);
+SIZE_TEST(struct_ems_uba_monitor_slow, struct ems_uba_monitor_slow, 41);
 
 struct ems_plus_t01a5
 {
@@ -145,6 +172,7 @@ struct ems_plus_t01a5
 
 union ems_plus_payload
 {
+  uint8_t raw[0];
   struct ems_plus_t01a5 t01a5;
 };
 
