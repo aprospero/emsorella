@@ -3,7 +3,6 @@
 #include <sys/time.h>
 #include <stdio.h>
 
-#include "queue.h"
 #include "serial.h"
 #include "ctrl/com/ems.h"
 #include "ems_serio.h"
@@ -99,8 +98,8 @@ void handle_poll() {
             tx_retries = -1;
         }
         // Pick a new message
-        //ret = msgrcv(tx_queue, &tx_buf, sizeof(tx_buf), 0, IPC_NOWAIT | MSG_NOERROR);
-        ret = mq_receive(tx_queue, (char *)tx_buf, MAX_PACKET_SIZE, 0);
+        // TODO: implement a send message trigger mechanism with buffering
+        ret = 0;
         if (ret > 0) {
             tx_retries = 0;
             tx_len = (size_t)ret;

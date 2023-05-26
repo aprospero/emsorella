@@ -8,7 +8,6 @@
 
 #include "serial.h"
 #include "ems_serio.h"
-#include "queue.h"
 #include "tx.h"
 #include "crc.h"
 #include "ctrl/com/mqtt.h"
@@ -68,7 +67,7 @@ enum parity_state
 const uint8_t break_chars[] = { 0xFFu, 0x00U, 0x00U };
 
 // Loop that reads single characters until a full packet is received.
-void rx_packet(int *abort) {
+void rx_packet(int * abort) {
 
   uint8_t c;
   size_t valid_char;
@@ -280,8 +279,5 @@ void rx_done() {
 
     // Do not check the CRC here. It adds too much delay and we risk missing a poll cycle.
     stats.rx_success++;
-    if (mq_send(rx_queue, (char *)rx_buf, rx_len, 0) == -1) {
-        LOG_ERROR("RX: Could not add packet to queue: %s", strerror(errno));
-    }
 }
 

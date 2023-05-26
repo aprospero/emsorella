@@ -1,4 +1,4 @@
-extern int open_serial(char *);
+extern int open_serial(const char *);
 extern int close_serial();
 extern int set_parity(int);
 

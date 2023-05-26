@@ -60,16 +60,6 @@
 			<locationURI>PARENT-1-PROJECT_LOC/ems_serio.h</locationURI>
 		</link>
 		<link>
-			<name>code/queue.c</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/queue.c</locationURI>
-		</link>
-		<link>
-			<name>code/queue.h</name>
-			<type>1</type>
-			<locationURI>PARENT-1-PROJECT_LOC/queue.h</locationURI>
-		</link>
-		<link>
 			<name>code/rx.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/rx.c</locationURI>

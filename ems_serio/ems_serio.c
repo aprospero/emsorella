@@ -14,23 +14,18 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <pthread.h>
 #include <signal.h>
 
 #include "serial.h"
 #include "defines.h"
-#include "queue.h"
 #include "rx.h"
 #include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
 
 
-#define handle_error_en(en, msg) do { errno = en; perror(msg); exit(EXIT_FAILURE); } while (0)
-
-int waitingfor;
 struct STATS stats;
-pthread_t readloop = 0;
 struct mqtt_handle * mqtt;
+int abort_rx_loop = FALSE;
 
 void print_stats() {
     LOG_INFO("Statistics");
@@ -44,90 +39,55 @@ void print_stats() {
     LOG_INFO("TX failures             %d", stats.tx_fail);
 }
 
+int read_loop(const char * serial_port)
+{
+  int ret = open_serial(serial_port);
+  if (ret != 0)
+  {
+      LOG_CRITICAL("Failed to open %s: %i", serial_port, ret);
+      goto FAILURE;
+  }
+  LOG_INFO("Serial port %s opened", serial_port);
 
-void stop_handler() {
-    close_queues();
-    close_serial();
-    readloop = 0;
-}
+  LOG_INFO("Initializing MQTT API.");
+  mqtt = mqtt_init("ems", "MTDC");
+  if (mqtt == NULL)
+  {
+    LOG_CRITICAL("Could not initialize mqtt API.");
+    goto FAILURE;
+  }
+  LOG_INFO("MQTT API Initialized.\n", serial_port);
 
-void *read_loop() {
-    int abort;
-
-    {
-        // Do not accept signals. They should be handled by calling code.
-        // We close cleanly when we're asked to stop with pthread_cancel.
-        sigset_t set;
-        int ret;
-        sigemptyset(&set);
-        sigaddset(&set, SIGQUIT);
-        ret = pthread_sigmask(SIG_BLOCK, &set, NULL);
-        if (ret != 0)
-            handle_error_en(ret, "pthread_sigmask");
-    }
-
-    pthread_cleanup_push(stop_handler, NULL);
-    LOG_INFO("Starting EMS bus access");
-    while (1) {
-        rx_packet(&abort);
-        rx_done();
-        mqtt_loop(mqtt, 0);
+    LOG_INFO("Starting EMS bus access.");
+    while (abort_rx_loop == FALSE) {
+        rx_packet(&abort_rx_loop);
+        if (abort_rx_loop == FALSE)
+          rx_done();
+        if (abort_rx_loop == FALSE)
+          mqtt_loop(mqtt, 0);
     }
     mqtt_close(mqtt);
-    pthread_cleanup_pop(1);
-    return NULL;
-}
+    close_serial();
+    print_stats();
+    return 0;
 
-int start(char *port_path) {
-    int ret;
-
-    ret = open_serial(port_path);
-    if (ret != 0) {
-        LOG_ERROR("Failed to open %s: %i", port_path, ret);
-        return(-1);
-    }
-    LOG_INFO("Serial port %s opened", port_path);
-
-    setup_queue(&tx_queue, TX_QUEUE_NAME);
-    if (tx_queue == -1) {
-        LOG_ERROR("Failed to open TX message queue: %i %s", tx_queue, strerror(errno));
-        return(-1);
-    }
-    setup_queue(&rx_queue, RX_QUEUE_NAME);
-    if (rx_queue == -1) {
-        LOG_ERROR("Failed to open RX message queue: %i  %s", rx_queue, strerror(errno));
-        return(-1);
-    }
-    LOG_INFO("Connected to message queues");
-
-    ret = pthread_create(&readloop, NULL, &read_loop, NULL);
-    if (ret != 0)
-        handle_error_en(ret, "pthread_create");
-
-    return(0);
-}
-
-int stop() {
-    if (!readloop)
-        return(-1);
-    pthread_cancel(readloop);
-    return(0);
+FAILURE:
+    if (ret)
+      close_serial();
+    if (mqtt)
+      mqtt_close(mqtt);
+    return -1;
 }
 
 void sig_stop() {
-    stop();
+  abort_rx_loop = TRUE;
 }
 
 int main(int argc, char *argv[]) {
-    int ret;
-    struct sigaction signal_action;
+
+   struct sigaction signal_action;
 
     log_init("ems_serio",  LF_STDOUT, LL_INFO);
-
-    mqtt = mqtt_init("ems", "MTDC");
-
-    if (mqtt == NULL)
-      LOG_ERROR("Could not initialize mqtt API.\n");
 
     if (argc < 2) {
       LOG_ERROR("Usage: %s <ttypath> [logmask:default=error]\n", argv[0]);
@@ -135,7 +95,6 @@ int main(int argc, char *argv[]) {
     }
     if (argc == 3)
       log_set_level(atoi(argv[2]), TRUE);
-    ret = start(argv[1]);
 
     // Set signal handler and wait for the thread
     signal_action.sa_handler = sig_stop;
@@ -145,8 +104,5 @@ int main(int argc, char *argv[]) {
     sigaction(SIGHUP, &signal_action, NULL);
     sigaction(SIGTERM, &signal_action, NULL);
 
-    pthread_join(readloop, NULL);
-    print_stats();
-
-    return(ret);
+    return read_loop(argv[1]);
 }

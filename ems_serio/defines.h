@@ -7,9 +7,6 @@
 #define MASTER_ID 0x08
 #define CLIENT_ID 0x0b
 
-#define RX_QUEUE_NAME "/ems_bus_rx"
-#define TX_QUEUE_NAME "/ems_bus_tx"
-
 #define BREAK_IN "\xFF\x00\x00"
 #define BREAK_OUT "\x00"
 #define MAX_TX_RETRIES 5
