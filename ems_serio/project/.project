@@ -60,6 +60,11 @@
 			<locationURI>PARENT-1-PROJECT_LOC/ems_serio.h</locationURI>
 		</link>
 		<link>
+			<name>code/linuxtools</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
+		</link>
+		<link>
 			<name>code/rx.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/rx.c</locationURI>
@@ -80,11 +85,6 @@
 			<locationURI>PARENT-1-PROJECT_LOC/serial.h</locationURI>
 		</link>
 		<link>
-			<name>code/tool</name>
-			<type>2</type>
-			<locationURI>virtual:/virtual</locationURI>
-		</link>
-		<link>
 			<name>code/tx.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/tx.c</locationURI>
@@ -100,34 +100,39 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>code/tool/logger.c</name>
-			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/tool/logger.c</locationURI>
+			<name>code/linuxtools/ctrl</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>code/tool/logger.h</name>
+			<name>code/linuxtools/stringhelp.c</name>
 			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/tool/logger.h</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/stringhelp.c</locationURI>
 		</link>
 		<link>
-			<name>code/tool/stringhelp.c</name>
+			<name>code/linuxtools/stringhelp.h</name>
 			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/tool/stringhelp.c</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/stringhelp.h</locationURI>
 		</link>
 		<link>
-			<name>code/tool/stringhelp.h</name>
+			<name>code/linuxtools/stuff.h</name>
 			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/tool/stringhelp.h</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/stuff.h</locationURI>
 		</link>
 		<link>
-			<name>code/tool/timehelp.c</name>
+			<name>code/linuxtools/timehelp.c</name>
 			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/tool/timehelp.c</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/timehelp.c</locationURI>
 		</link>
 		<link>
-			<name>code/tool/timehelp.h</name>
+			<name>code/linuxtools/timehelp.h</name>
 			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/tool/timehelp.h</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/timehelp.h</locationURI>
+		</link>
+		<link>
+			<name>code/linuxtools/tool</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
 			<name>code/ctrl/com/ems.c</name>
@@ -140,14 +145,29 @@
 			<locationURI>PARENT-1-PROJECT_LOC/ctrl/com/ems.h</locationURI>
 		</link>
 		<link>
-			<name>code/ctrl/com/mqtt.c</name>
-			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/ctrl/com/mqtt.c</locationURI>
+			<name>code/linuxtools/ctrl/com</name>
+			<type>2</type>
+			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
-			<name>code/ctrl/com/mqtt.h</name>
+			<name>code/linuxtools/tool/logger.c</name>
 			<type>1</type>
-			<locationURI>PARENT-3-PROJECT_LOC/can-mtdc-logger/code/ctrl/com/mqtt.h</locationURI>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/tool/logger.c</locationURI>
+		</link>
+		<link>
+			<name>code/linuxtools/tool/logger.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/tool/logger.h</locationURI>
+		</link>
+		<link>
+			<name>code/linuxtools/ctrl/com/mqtt.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/ctrl/com/mqtt.c</locationURI>
+		</link>
+		<link>
+			<name>code/linuxtools/ctrl/com/mqtt.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/linuxtools/src/ctrl/com/mqtt.h</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

@@ -1,0 +1,3 @@
+[submodule "ems_serio/linuxtools"]
+	path = ems_serio/linuxtools
+	url = https://github.com/aprospero/linuxtools.git
