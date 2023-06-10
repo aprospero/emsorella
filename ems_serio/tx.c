@@ -24,10 +24,10 @@ void tx_break() {
     if (ret != 0) {
         return;
     }
-    LOG_DEBUG("WR 0x%02hhx BREAK", BREAK_OUT[0]);
+    LG_DEBUG("WR 0x%02hhx BREAK", BREAK_OUT[0]);
     if (write(port, BREAK_OUT, 1) < 1)
 	{
-		LOG_ERROR("write BREAK failed.");
+		LG_ERROR("write BREAK failed.");
 		return;
     }
     set_parity(0);
@@ -43,33 +43,33 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
 
     // Write the message by character while checking the echoed characters from the MASTER_ID
     for (i = 0; i < len; i++) {
-        LOG_DEBUG("WR 0x%02hhx", msg[i]);
+        LG_DEBUG("WR 0x%02hhx", msg[i]);
         if (write(port, &msg[i], 1) != 1) {
-            LOG_ERROR("write() failed");
+            LG_ERROR("write() failed");
             return(i);
         }
         if (rx_wait() != 1) {
-            LOG_ERROR("Echo not received after 200 ms");
+            LG_ERROR("Echo not received after 200 ms");
             return(i);
         }
         if (read(port, &echo, 1) != 1) {
-            LOG_ERROR("read() failed after successful select");
+            LG_ERROR("read() failed after successful select");
             return(i);
         };
-        LOG_DEBUG("RD 0x%02hhx", echo);
+        LG_DEBUG("RD 0x%02hhx", echo);
         if (msg[i] != echo) {
-            LOG_ERROR("TX fail: send 0x%02x but echo is 0x%02x", msg[i], echo);
+            LG_ERROR("TX fail: send 0x%02x but echo is 0x%02x", msg[i], echo);
             return(i);
         }
         if (echo == 0xff) {
             // Parity escaping also doubles a 0xff
             if (read(port, &echo, 1) != 1) {
-                LOG_ERROR("read() failed");
+                LG_ERROR("read() failed");
                 return(i);
             }
-            LOG_DEBUG("RD 0x%02hhx", echo);
+            LG_DEBUG("RD 0x%02hhx", echo);
             if (echo != 0xff) {
-                LOG_ERROR("TX fail: parity escaping expected 0xff but got 0x%02x", echo);
+                LG_ERROR("TX fail: parity escaping expected 0xff but got 0x%02x", echo);
                 return(i);
             }
         }
@@ -77,7 +77,7 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
 
 //    tx_break();
 //    if (rx_break() == -1) {
-//        LOG_ERROR("TX fail: packet not ACKed by MASTER_ID");
+//        LG_ERROR("TX fail: packet not ACKed by MASTER_ID");
 //        return(0);
 //    }
 
@@ -94,7 +94,7 @@ void handle_poll() {
     // Todo: Release the bus after sending a message (does not work)
     if (tx_retries < 0 || tx_retries > MAX_TX_RETRIES) {
         if (tx_retries > MAX_TX_RETRIES) {
-//            LOG_ERROR("TX failed 5 times. Dropping message.");
+//            LG_ERROR("TX failed 5 times. Dropping message.");
             tx_retries = -1;
         }
         // Pick a new message
@@ -113,7 +113,7 @@ void handle_poll() {
 
     gettimeofday(&now, NULL);
     have_bus = (now.tv_sec - got_bus.tv_sec) * 1000 + (now.tv_usec - got_bus.tv_usec) / 1000;
-//    LOG_INFO("Occupying bus since %li ms", have_bus);
+//    LG_INFO("Occupying bus since %li ms", have_bus);
 
     if (tx_retries >= 0 && have_bus < MAX_BUS_TIME) {
         if ((size_t)tx_packet(tx_buf, tx_len) == tx_len) {
@@ -121,7 +121,7 @@ void handle_poll() {
             if (tx_buf[1] == 0x00) {
                 // Release bus
                 if (tx_packet(&client_id, 1) != 1) {
-//                    LOG_ERROR("TX poll reply failed");
+//                    LG_ERROR("TX poll reply failed");
                 }
                 state = RELEASED;
             } else if (tx_buf[1] & 0x80) {
@@ -135,14 +135,14 @@ void handle_poll() {
                 state = WROTE;
             }
         } else {
-//            LOG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
+//            LG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
             tx_retries++;
             state = RELEASED;
         }
     } else {
         // Nothing to send.
         if (tx_packet(&client_id, 1) != 1) {
-//            LOG_ERROR("TX poll reply failed");
+//            LG_ERROR("TX poll reply failed");
         }
         state = RELEASED;
     }

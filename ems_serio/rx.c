@@ -41,13 +41,13 @@ int rx_break() {
 
     ret = rx_wait();
     if (ret != 1) {
-        LOG_ERROR("select() failed: %i", ret);
+        LG_ERROR("select() failed: %i", ret);
         return(-1);
     }
     for (size_t i = 0; i < sizeof(BREAK_IN) - 1; i++) {
         ret = read(port, &echo, 1);
         if (ret != 1 || echo != BREAK_IN[i]) {
-            LOG_ERROR("TX fail: expected break char 0x%02x but got 0x%02x", echo,
+            LG_ERROR("TX fail: expected break char 0x%02x but got 0x%02x", echo,
                 BREAK_IN[i]);
             return(-1);
         }
@@ -122,7 +122,7 @@ void rx_packet(int * abort) {
 
       if (rx_len >= MAX_PACKET_SIZE)
       {
-        LOG_ERROR("Maximum packet size reached. Following characters ignored.");
+        LG_ERROR("Maximum packet size reached. Following characters ignored.");
         print_telegram(0, LL_INFO, "ABANDONED", rx_buf, rx_len);
         rx_len = 0;
       }
@@ -150,7 +150,7 @@ void rx_mac()
   if (rx_buf[0] == 0x01) {
       // Got an ACK. Warn if there was no write from the bus-owning device.
       if (state != WROTE) {
-          LOG_ERROR("Got an ACK without prior write message from 0x%02hhx", polled_id);
+          LG_ERROR("Got an ACK without prior write message from 0x%02hhx", polled_id);
           stats.rx_mac_errors++;
       }
       if (polled_id == client_id) {
@@ -162,7 +162,7 @@ void rx_mac()
   } else if (rx_buf[0] >= 0x08 && rx_buf[0] < 0x80) {
       // Bus release.
       if (state != ASSIGNED) {
- //       LOG_DEBUG("Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
+ //       LG_DEBUG("Got bus release from 0x%02hhx without prior poll request", rx_buf[0]);
           stats.rx_mac_errors++;
       }
       polled_id = 0;
@@ -170,7 +170,7 @@ void rx_mac()
   } else if (rx_buf[0] & 0x80) {
       // Bus assign. We may not be in released state it the queried device did not exist.
       if (state != RELEASED && state != ASSIGNED) {
- //         LOG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
+ //         LG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", rx_buf[0], polled_id);
           stats.rx_mac_errors++;
       }
       polled_id = rx_buf[0] & 0x7f;
@@ -181,7 +181,7 @@ void rx_mac()
           state = ASSIGNED;
       }
   } else {
-//      LOG_DEBUG("Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
+//      LG_DEBUG("Ignored unknown MAC package 0x%02hhx", rx_buf[0]);
       stats.rx_mac_errors++;
   }
 }
@@ -197,7 +197,7 @@ void rx_done() {
 
     stats.rx_total++;
     if (rx_len < 6) {
-        LOG_WARN("Ignored short package");
+        LG_WARN("Ignored short package");
         if (state == WROTE || state == READ)
             state = ASSIGNED;
         stats.rx_short++;
@@ -207,7 +207,7 @@ void rx_done() {
     crc = calc_crc(rx_buf, rx_len - 1);
     if (crc != rx_buf[rx_len-1])
     {
-      LOG_ERROR("Got an CRC error: 0x%02X : 0x%02X.", crc, rx_buf[rx_len-1]);
+      LG_ERROR("Got an CRC error: 0x%02X : 0x%02X.", crc, rx_buf[rx_len-1]);
       print_telegram(0, LL_ERROR, "CRC-ERROR", rx_buf, rx_len);
     }
     else
@@ -228,14 +228,14 @@ void rx_done() {
         state = RELEASED;
     } else if (state == ASSIGNED) {
         if (rx_buf[0] != polled_id && rx_buf[0] != MASTER_ID) {
-//            LOG_ERROR("Ignored package from 0x%02hhx instead of polled 0x%02hhx or MASTER_ID", rx_buf[0], polled_id);
+//            LG_ERROR("Ignored package from 0x%02hhx instead of polled 0x%02hhx or MASTER_ID", rx_buf[0], polled_id);
             stats.rx_sender++;
             return;
         }
         dst = rx_buf[1] & 0x7f;
         if (rx_buf[1] & 0x80) {
             if (dst < 0x08) {
- //               LOG_ERROR("Ignored read from 0x%02hhx to invalid address 0x%02hhx",  rx_buf[0], dst);
+ //               LG_ERROR("Ignored read from 0x%02hhx to invalid address 0x%02hhx",  rx_buf[0], dst);
                 stats.rx_format++;
                 return;
             }
@@ -247,7 +247,7 @@ void rx_done() {
             state = READ;
         } else {
             if (dst > 0x00 && dst < 0x08) {
- //               LOG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx", rx_buf[0], dst);
+ //               LG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx", rx_buf[0], dst);
                 stats.rx_format++;
                 return;
             }
@@ -260,7 +260,7 @@ void rx_done() {
         // Handle immediate read response.
         state = ASSIGNED;
         if (memcmp(read_expected, rx_buf, HDR_LEN)) {
-//            LOG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",  rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
+//            LG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",  rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
             stats.rx_format++;
             return;
         }
@@ -268,11 +268,11 @@ void rx_done() {
             handle_poll();
         }
     } else if (state == WROTE) {
-//        LOG_ERROR("Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
+//        LG_ERROR("Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
         stats.rx_sender++;
         return;
     } else if (rx_buf[0] != MASTER_ID) {
-//        LOG_ERROR("Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
+//        LG_ERROR("Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
         stats.rx_sender++;
         return;
     }

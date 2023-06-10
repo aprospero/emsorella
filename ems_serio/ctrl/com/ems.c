@@ -132,7 +132,7 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
       {
         case EMSPLUS_01A5:
           print_telegram(1, LL_DEBUG_MORE, "EMS+ Telegram 01a5", (uint8_t *) tel, len);
-          log_push(LL_DEBUG, "CW400 - Room Temp  %04.1f°C.", NANVAL(emsplus_t01a5.room_temp_act));
+          LG_DEBUG("CW400 - Room Temp  %04.1f°C.", NANVAL(emsplus_t01a5.room_temp_act));
         break;
         default:
           print_telegram(1, LL_INFO, "Unknown EMS+ Telegram", (uint8_t *) tel, len);
@@ -145,14 +145,14 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
       struct ems_uba_monitor_fast * msg = &uba_mon_fast;
       print_telegram(1, LL_DEBUG_MORE, "EMS Telegram UBA_mon_fast", (uint8_t *) tel, len);
 
-      log_push(LL_DEBUG, "Mon fast   VL: %04.1f°C/%04.1f°C (ist/soll)  RL: %04.1f °C     WW: %04.1f °C     Tmp?: %04.1f °C."
+      LG_DEBUG("Mon fast   VL: %04.1f°C/%04.1f°C (ist/soll)  RL: %04.1f °C     WW: %04.1f °C     Tmp?: %04.1f °C."
           , 0.1f * msg->vl_ist, 1.0f * msg->vl_soll, NANVAL(msg->tmp.rl), NANVAL(msg->tmp.water), NANVAL(msg->tmp.tmp1 ));
-      log_push(LL_DEBUG, "  len: % 2u  Pump: %s       Blow: %s       Gas: %s      Ignite: %s      Circ: %s       Valve: %s.", len
+      LG_DEBUG("  len: % 2u  Pump: %s       Blow: %s       Gas: %s      Ignite: %s      Circ: %s       Valve: %s.", len
                 ,ONOFF(msg->on.pump), ONOFF(msg->on.blower), ONOFF(msg->on.gas    ), ONOFF(msg->on.ignite ), ONOFF(msg->on.circ   ), ONOFF(msg->on.valve  ));
-      log_push(LL_DEBUG, "  src: %02X  KsP: %03d%%/%03d%% (akt/max)    FlCurr: %04.1f µA Druck: %04.1f bar.", tel->h.src
+      LG_DEBUG("  src: %02X  KsP: %03d%%/%03d%% (akt/max)    FlCurr: %04.1f µA Druck: %04.1f bar.", tel->h.src
                 , msg->ks_akt_p, msg->ks_max_p, NANVAL(msg->fl_current), NANVA8(msg->sys_press));
 
-      log_push(LL_DEBUG, "  dst: %02X  Error: %d  ServiceCode: %.2s.", tel->h.dst, msg->err, msg->service_code);
+      LG_DEBUG("  dst: %02X  Error: %d  ServiceCode: %.2s.", tel->h.dst, msg->err, msg->service_code);
     }
     break;
     case ETT_UBA_MON_SLOW:
@@ -160,11 +160,11 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
       struct ems_uba_monitor_slow * msg = &uba_mon_slow;
 
       print_telegram(1, LL_DEBUG_MORE, "EMS Telegram UBA_Mon_slow", (uint8_t *) tel, len);
-      log_push(LL_DEBUG, "Mon slow  Out: %04.1f °C    boiler: %04.1f °C    exhaust: %04.1f °C     Pump Mod: % 3u %%"
+      LG_DEBUG("Mon slow  Out: %04.1f °C    boiler: %04.1f °C    exhaust: %04.1f °C     Pump Mod: % 3u %%"
           , NANVAL(msg->tmp_out), NANVAL(msg->tmp_boiler), NANVAL(msg->tmp_exhaust), msg->pump_mod);
-      log_push(LL_DEBUG, "  len: % 2u       Burner starts: % 8d       runtime: % 8d min    rt-stage2: % 8d min      rt-heating: % 8d min.", len
+      LG_DEBUG("  len: % 2u       Burner starts: % 8d       runtime: % 8d min    rt-stage2: % 8d min      rt-heating: % 8d min.", len
                 ,TRIVAL(msg->burner_starts), TRIVAL(msg->run_time), TRIVAL(msg->run_time_stage_2), TRIVAL(msg->run_time_heating));
-      log_push(LL_DEBUG, "  src: %02X     dst: %02X.", tel->h.src, tel->h.dst);
+      LG_DEBUG("  src: %02X     dst: %02X.", tel->h.src, tel->h.dst);
     }
     break;
     case ETT_UBA_MON_WWM:
@@ -172,13 +172,13 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
       struct ems_uba_monitor_wwm * msg = &uba_mon_wwm;
 
       print_telegram(1, LL_DEBUG_MORE, "EMS Telegram UBA_Mon_wwm", (uint8_t *) tel, len);
-      log_push(LL_DEBUG, "Mon WWM   Ist: %04.1f°C/%04.1f°C  Soll: %04.1f °C     Lädt: %s      Durchfluss: %04.1f l/m."
+      LG_DEBUG("Mon WWM   Ist: %04.1f°C/%04.1f°C  Soll: %04.1f °C     Lädt: %s      Durchfluss: %04.1f l/m."
           , NANVAL(msg->ist[0]), NANVAL(msg->ist[1]), 1.0f * msg->soll, ONOFF(msg->sw2.is_loading), NANVA8(msg->throughput));
-      log_push(LL_DEBUG, "  len: % 2u Circ: %s       Man: %s       Day: %s      Single: %s      Day: %s       Reload: %s.", len
+      LG_DEBUG("  len: % 2u Circ: %s       Man: %s       Day: %s      Single: %s      Day: %s       Reload: %s.", len
                 ,ONOFF(msg->sw2.circ_active), ONOFF(msg->sw2.circ_manual), ONOFF(msg->sw2.circ_daylight), ONOFF(msg->sw1.single_load ), ONOFF(msg->sw1.daylight_mode), ONOFF(msg->sw1.reloading));
-      log_push(LL_DEBUG, "  src: %02X Type: %02X    prod: %s    Detox: %s     count: % 8u   time: % 8u min   temp: %s.", tel->h.src
+      LG_DEBUG("  src: %02X Type: %02X    prod: %s    Detox: %s     count: % 8u   time: % 8u min   temp: %s.", tel->h.src
                 , msg->type, ONOFF(msg->sw1.active), ONOFF(msg->sw1.desinfect), TRIVAL(msg->op_count), TRIVAL(msg->op_time), msg->sw1.temp_ok ? " OK" : "NOK");
-      log_push(LL_DEBUG, "  dst: %02X WWErr: %s    PR1Err: %s   PR2Err: %s   DesErr: %s.", tel->h.dst
+      LG_DEBUG("  dst: %02X WWErr: %s    PR1Err: %s   PR2Err: %s   DesErr: %s.", tel->h.dst
                , ONOFF(msg->fail.ww), ONOFF(msg->fail.probe_1), ONOFF(msg->fail.probe_2), ONOFF(msg->fail.desinfect));
     }
     break;
@@ -254,7 +254,7 @@ void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel, 
 }
 
 void print_telegram(int out, enum log_level loglevel, const char * prefix, uint8_t *msg, size_t len) {
-    if (!log_get_level(loglevel))
+    if (!log_get_level_state(loglevel))
         return;
     char text[3 + len * 3 + 2 + 1 + strlen(prefix) + 8];
     int pos = 0;

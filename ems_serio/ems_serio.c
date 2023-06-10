@@ -28,15 +28,15 @@ struct mqtt_handle * mqtt;
 int abort_rx_loop = FALSE;
 
 void print_stats() {
-    LOG_INFO("Statistics");
-    LOG_INFO("RX bus access errors    %d", stats.rx_mac_errors);
-    LOG_INFO("RX total                %d", stats.rx_total);
-    LOG_INFO("RX success              %d", stats.rx_success);
-    LOG_INFO("RX too short            %d", stats.rx_short);
-    LOG_INFO("RX wrong sender         %d", stats.rx_sender);
-    LOG_INFO("RX CRC errors           %d", stats.rx_format);
-    LOG_INFO("TX total                %d", stats.tx_total);
-    LOG_INFO("TX failures             %d", stats.tx_fail);
+    LG_INFO("Statistics");
+    LG_INFO("RX bus access errors    %d", stats.rx_mac_errors);
+    LG_INFO("RX total                %d", stats.rx_total);
+    LG_INFO("RX success              %d", stats.rx_success);
+    LG_INFO("RX too short            %d", stats.rx_short);
+    LG_INFO("RX wrong sender         %d", stats.rx_sender);
+    LG_INFO("RX CRC errors           %d", stats.rx_format);
+    LG_INFO("TX total                %d", stats.tx_total);
+    LG_INFO("TX failures             %d", stats.tx_fail);
 }
 
 int read_loop(const char * serial_port)
@@ -44,21 +44,21 @@ int read_loop(const char * serial_port)
   int ret = open_serial(serial_port);
   if (ret != 0)
   {
-      LOG_CRITICAL("Failed to open %s: %i", serial_port, ret);
+      LG_CRITICAL("Failed to open %s: %i", serial_port, ret);
       goto FAILURE;
   }
-  LOG_INFO("Serial port %s opened", serial_port);
+  LG_INFO("Serial port %s opened", serial_port);
 
-  LOG_INFO("Initializing MQTT API.");
-  mqtt = mqtt_init("ems", "MTDC");
+  LG_INFO("Initializing MQTT API.");
+  mqtt = mqtt_init("ems", "MTDC", 2);
   if (mqtt == NULL)
   {
-    LOG_CRITICAL("Could not initialize mqtt API.");
+    LG_CRITICAL("Could not initialize mqtt API.");
     goto FAILURE;
   }
-  LOG_INFO("MQTT API Initialized.\n", serial_port);
+  LG_INFO("MQTT API Initialized.\n", serial_port);
 
-    LOG_INFO("Starting EMS bus access.");
+    LG_INFO("Starting EMS bus access.");
     while (abort_rx_loop == FALSE) {
         rx_packet(&abort_rx_loop);
         if (abort_rx_loop == FALSE)
@@ -90,11 +90,11 @@ int main(int argc, char *argv[]) {
     log_init("ems_serio",  LF_STDOUT, LL_INFO);
 
     if (argc < 2) {
-      LOG_ERROR("Usage: %s <ttypath> [logmask:default=error]\n", argv[0]);
+      LG_ERROR("Usage: %s <ttypath> [logmask:default=error]\n", argv[0]);
         return(-1);
     }
     if (argc == 3)
-      log_set_level(atoi(argv[2]), TRUE);
+      log_set_level_state(atoi(argv[2]), TRUE);
 
     // Set signal handler and wait for the thread
     signal_action.sa_handler = sig_stop;
