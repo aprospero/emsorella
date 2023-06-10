@@ -21,6 +21,7 @@
 #include "rx.h"
 #include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
+#include "version.h"
 
 
 struct STATS stats;
@@ -86,6 +87,11 @@ void sig_stop() {
 int main(int argc, char *argv[]) {
 
    struct sigaction signal_action;
+   char * app_name = strrchr(argv[0], '/');
+   if (app_name == NULL)
+     app_name = argv[0];
+   else
+     app_name++;
 
     log_init("ems_serio",  LF_STDOUT, LL_INFO);
 
@@ -96,6 +102,10 @@ int main(int argc, char *argv[]) {
     if (argc == 3)
       log_set_level_state(atoi(argv[2]), TRUE);
 
+    log_push(LL_NONE, "##########################################################################");
+    log_push(LL_NONE, "Starting %s "APP_VERSION" - on:%s, LogFacility:%s Level:%s.",
+             app_name, argv[1], log_get_facility_name(LF_STDOUT), log_get_level_name(atoi(argv[2]), TRUE));
+    log_push(LL_NONE, "##########################################################################");
     // Set signal handler and wait for the thread
     signal_action.sa_handler = sig_stop;
     sigemptyset(&signal_action.sa_mask);

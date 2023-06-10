@@ -95,6 +95,11 @@
 			<locationURI>PARENT-1-PROJECT_LOC/tx.h</locationURI>
 		</link>
 		<link>
+			<name>code/version.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/version.h</locationURI>
+		</link>
+		<link>
 			<name>code/ctrl/com</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>
