@@ -271,9 +271,9 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
       if (offsetof(struct ems_uba_monitor_fast, tmp.water) >= tel->h.offs && offsetof(struct ems_uba_monitor_fast, tmp.water) + sizeof(uba_mon_fast.tmp.water) - 1 <= tel->h.offs + len)
       {
         LG_INFO("Check if Water's too hot or too cold.");
-        if (uba_mon_fast.tmp.water > 600 && !uba_mon_wwm.sw2.circ_active)
+        if (uba_mon_fast.tmp.water >= 650 && !uba_mon_wwm.sw2.circ_active)
           EMS_SEND_MSG(msg_circ_on)
-        else if (uba_mon_fast.tmp.water < 450 && !uba_mon_wwm.sw2.circ_active)
+        else if (uba_mon_fast.tmp.water <= 550 && !uba_mon_wwm.sw2.circ_active)
           EMS_SEND_MSG(msg_circ_off)
       }
     break;
