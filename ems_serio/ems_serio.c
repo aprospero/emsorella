@@ -42,7 +42,7 @@ void print_stats() {
 
 int read_loop(const char * serial_port)
 {
-  int ret = open_serial(serial_port);
+  int ret = serial_open(serial_port);
   if (ret != 0)
   {
       LG_CRITICAL("Failed to open %s: %i", serial_port, ret);
@@ -68,13 +68,13 @@ int read_loop(const char * serial_port)
           mqtt_loop(mqtt, 0);
     }
     mqtt_close(mqtt);
-    close_serial();
+    serial_close();
     print_stats();
     return 0;
 
 FAILURE:
     if (ret)
-      close_serial();
+      serial_close();
     if (mqtt)
       mqtt_close(mqtt);
     return -1;

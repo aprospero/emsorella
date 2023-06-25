@@ -14,32 +14,11 @@ uint8_t tx_buf[MAX_PACKET_SIZE];
 size_t tx_len;
 static uint8_t client_id = CLIENT_ID;
 
-void tx_break() {
-    int ret;
-    // Send a BREAK signal on the EMS bus
-    // Each message must be closed with a 9-bit low level on the bus.
-    // Posix termios does not support 9-bit tty, so just enable a even parity bit.
-    // The interface then sends a 9th zero bit after sending 0x00.
-    ret = set_parity(1);
-    if (ret != 0) {
-        return;
-    }
-    LG_DEBUG("WR 0x%02hhx BREAK", BREAK_OUT[0]);
-    if (write(port, BREAK_OUT, 1) < 1)
-	{
-		LG_ERROR("write BREAK failed.");
-		return;
-    }
-    set_parity(0);
-}
-
 ssize_t tx_packet(uint8_t *msg, size_t len) {
     size_t i;
     uint8_t echo;
 
-    print_telegram(1, LL_INFO, "WOULD SEND", msg, len);
-
-    len = 0; // we never send anything at all.
+    print_telegram(1, LL_INFO, "TX", msg, len);
 
     // Write the message by character while checking the echoed characters from the MASTER_ID
     for (i = 0; i < len; i++) {
@@ -75,11 +54,11 @@ ssize_t tx_packet(uint8_t *msg, size_t len) {
         }
     }
 
-//    tx_break();
-//    if (rx_break() == -1) {
-//        LG_ERROR("TX fail: packet not ACKed by MASTER_ID");
-//        return(0);
-//    }
+    serial_send_break();
+    if (rx_break() == -1) {
+        LG_ERROR("TX fail: packet not ACKed by MASTER_ID");
+        return(0);
+    }
 
     return(i);
 }

@@ -2,16 +2,44 @@
 
 #include <termios.h>
 #include <unistd.h>
+#include <stdint.h>
+#include <errno.h>
+#include <string.h>
 #include <fcntl.h>
+#include <sys/mman.h>
+
+#include "tool/logger.h"
 
 int port;
-tcflag_t tcflag_normal;
-tcflag_t tcflag_parity;
 struct termios tios;
+uint32_t * volatile uart_reg = NULL;
+int mem_fd = -1;
 
-int open_serial(const char *tty_path) {
+#define UART_REG_BASE 0x02020000
+#define UART_REG_LEN  0x00001000
+
+#define UART_FLG_UCR1_SNDBRK (0x01 << 4)
+#define UART_FLG_USR2_TXDC   (0x01 << 3)
+
+#define UART_REG_UCR1 (0x80 >> 2)
+#define UART_REG_USR2 (0x98 >> 2)
+
+
+
+int serial_open(const char *tty_path) {
     // Opens a raw serial with parity marking enabled
-    int ret;
+    int ret, fd;
+
+    mem_fd = open("/dev/mem", O_RDWR);
+    if (-1 == mem_fd) {
+      LG_ERROR("Could not open /dev/mem.");
+      return -1;
+    }
+    uart_reg = mmap(NULL, UART_REG_LEN, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, UART_REG_BASE);
+    if (uart_reg == MAP_FAILED) {
+       LG_ERROR("Could not mmap");
+       return 1;
+    }
 
     port = open(tty_path, O_RDWR | O_NOCTTY);
     if (port < 0) {
@@ -59,19 +87,41 @@ int open_serial(const char *tty_path) {
     tios.c_cc[VTIME] = 0;
     ret = tcsetattr(port, TCSANOW, &tios);
     if (ret != 0) {
-        return(ret);
+      LG_ERROR("could not set Serial Params: %s.", strerror(errno));
+      return ret;
     }
     tcflush(port, TCIOFLUSH);
-    tcflag_normal = tios.c_cflag;
-    tcflag_parity = (tcflag_normal | PARENB) & ~PARODD;
     return(0);
 }
 
-int close_serial() {
-    return(close(port));
+int serial_close() {
+  int ret = 0;
+  int tmp;
+  if (uart_reg != NULL) {
+    ret = munmap(uart_reg, UART_REG_LEN);
+    if (ret != 0) {
+       LG_ERROR("Could not munmap");
+     }
+  }
+  if (mem_fd != -1) {
+    tmp = close (mem_fd);
+    if (tmp) {
+      LG_ERROR("Could not close /dev/mem");
+      ret |= tmp;
+    }
+  }
+  return(ret | close(port));
 }
 
-int set_parity(int enable) {
-    tios.c_cflag = enable ? tcflag_parity : tcflag_normal;
-    return(tcsetattr(port, TCSANOW, &tios));
+void serial_send_break()
+{
+  // wait for pending transmissions done
+  while (!(uart_reg[UART_REG_USR2] & UART_FLG_USR2_TXDC))
+    if (log_get_level_state(LL_DEBUG))
+      LG_DEBUG("Wait for TX to complete...");
+
+  // send break for at least 1,004 ms (10 zeros at 9600 baud)
+  uart_reg[UART_REG_UCR1] |= UART_FLG_UCR1_SNDBRK;
+  usleep(1004);
+  uart_reg[UART_REG_UCR1] &= ~UART_FLG_UCR1_SNDBRK;
 }
