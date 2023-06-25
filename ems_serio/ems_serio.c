@@ -19,10 +19,13 @@
 #include "serial.h"
 #include "defines.h"
 #include "rx.h"
+#include "tx.h"
 #include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
 #include "version.h"
 
+const uint8_t BREAK_IN[] = { 0xFF, 0x00, 0x00 };
+const uint8_t BREAK_OUT[] = { 0x00 };
 
 struct STATS stats;
 struct mqtt_handle * mqtt;

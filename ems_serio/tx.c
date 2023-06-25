@@ -11,7 +11,7 @@
 
 int tx_retries = -1;
 uint8_t tx_buf[MAX_PACKET_SIZE];
-size_t tx_len;
+size_t tx_len = 0;
 static uint8_t client_id = CLIENT_ID;
 
 ssize_t tx_packet(uint8_t *msg, size_t len) {
@@ -73,18 +73,15 @@ void handle_poll() {
     // Todo: Release the bus after sending a message (does not work)
     if (tx_retries < 0 || tx_retries > MAX_TX_RETRIES) {
         if (tx_retries > MAX_TX_RETRIES) {
-//            LG_ERROR("TX failed 5 times. Dropping message.");
+            LG_ERROR("TX failed 5 times. Dropping message.");
             tx_retries = -1;
         }
         // Pick a new message
         // TODO: implement a send message trigger mechanism with buffering
-        ret = 0;
-        if (ret > 0) {
+        if (tx_len > 0) {
             tx_retries = 0;
-            tx_len = (size_t)ret;
             if (tx_len >= 6) {
-                // Set the source ID and CRC value
-                tx_buf[0] = client_id;
+                // Set the CRC value
                 tx_buf[tx_len - 1] = calc_crc(tx_buf, tx_len - 1);
             }
         }
@@ -92,16 +89,16 @@ void handle_poll() {
 
     gettimeofday(&now, NULL);
     have_bus = (now.tv_sec - got_bus.tv_sec) * 1000 + (now.tv_usec - got_bus.tv_usec) / 1000;
-//    LG_INFO("Occupying bus since %li ms", have_bus);
+    LG_INFO("Occupying bus since %li ms", have_bus);
 
     if (tx_retries >= 0 && have_bus < MAX_BUS_TIME) {
-        if ((size_t)tx_packet(tx_buf, tx_len) == tx_len) {
+        if ((size_t) tx_packet(tx_buf, tx_len) == tx_len) {
             tx_retries = -1;
-            if (tx_buf[1] == 0x00) {
+            tx_len = 0;
+            if (tx_buf[1] == 0x00) {  // broadcast
                 // Release bus
-                if (tx_packet(&client_id, 1) != 1) {
-//                    LG_ERROR("TX poll reply failed");
-                }
+                if (tx_packet(&client_id, 1) != 1)
+                  LG_ERROR("TX poll reply failed");
                 state = RELEASED;
             } else if (tx_buf[1] & 0x80) {
                 read_expected[0] = tx_buf[1] & 0x7f;
@@ -114,15 +111,15 @@ void handle_poll() {
                 state = WROTE;
             }
         } else {
-//            LG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
+            LG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
             tx_retries++;
             state = RELEASED;
         }
     } else {
-        // Nothing to send.
-        if (tx_packet(&client_id, 1) != 1) {
-//            LG_ERROR("TX poll reply failed");
-        }
-        state = RELEASED;
+      // Nothing to send.
+      uint8_t release = client_id | 0x80U;
+      if (tx_packet(&release, 1) != 1)
+        LG_ERROR("TX poll reply failed");
+      state = RELEASED;
     }
 }
