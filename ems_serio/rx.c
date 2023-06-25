@@ -219,6 +219,7 @@ void rx_done() {
       ems_swap_telegram(tel, rx_len);
       ems_log_telegram(tel, rx_len);
       ems_publish_telegram(mqtt, tel, rx_len);
+      ems_logic_evaluate_telegram(tel, rx_len);
     }
 
     // The MASTER_ID can always send when the bus is not assigned (as it's senseless to poll himself).
