@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
    else
      app_name++;
 
-    log_init("ems_serio",  LF_STDOUT, LL_INFO);
+    log_init("ems_serio",  LF_STDOUT, LL_CRITICAL);
 
     if (argc < 2) {
       LG_ERROR("Usage: %s <ttypath> [logmask:default=error]\n", argv[0]);
