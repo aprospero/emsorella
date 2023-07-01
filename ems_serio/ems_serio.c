@@ -24,6 +24,8 @@
 #include "tool/logger.h"
 #include "version.h"
 
+#define DEFUALT_LOG_FAC LF_LOCAL1
+
 const uint8_t BREAK_IN[] = { 0xFF, 0x00, 0x00 };
 const uint8_t BREAK_OUT[] = { 0x00 };
 
@@ -96,7 +98,7 @@ int main(int argc, char *argv[]) {
    else
      app_name++;
 
-    log_init("ems_serio",  LF_LOCAL1, LL_CRITICAL);
+    log_init("ems_serio",  DEFUALT_LOG_FAC, LL_CRITICAL);
 
     if (argc < 2) {
       LG_ERROR("Usage: %s <ttypath> [logmask:default=error]\n", argv[0]);
@@ -107,7 +109,7 @@ int main(int argc, char *argv[]) {
 
     log_push(LL_NONE, "##########################################################################");
     log_push(LL_NONE, "Starting %s "APP_VERSION" - on:%s, LogFacility:%s Level:%s.",
-             app_name, argv[1], log_get_facility_name(LF_LOCAL1), log_get_level_name(atoi(argv[2]), TRUE));
+             app_name, argv[1], log_get_facility_name(DEFUALT_LOG_FAC), log_get_level_name(atoi(argv[2]), TRUE));
     log_push(LL_NONE, "##########################################################################");
     // Set signal handler and wait for the thread
     signal_action.sa_handler = sig_stop;
