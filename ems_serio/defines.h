@@ -17,7 +17,7 @@ extern const uint8_t BREAK_OUT[1];
 #define MAX_TX_RETRIES 5
 #define ACK_LEN 1
 #define ACK_VALUE 0x01
-#define MAX_BUS_TIME 200 * 1000
+#define MAX_BUS_TIME 200  /* ms */
 
 struct STATS {
     unsigned int rx_mac_errors;
