@@ -124,96 +124,111 @@ void rx_mac()
 
 // Handler on a received packet
 void rx_done() {
-    uint8_t dst;
-    int crc;
- 
-    // Handle MAC packages first. They always have length 1.
-    if (rx_len == 1)
-      return rx_mac();
+  uint8_t dst;
+  int crc;
 
-    stats.rx_total++;
-    if (rx_len < 6) {
-      print_telegram(0, LL_WARN, "Ignored short telegram", rx_buf, rx_len);
-      if (state == WROTE || state == READ)
-        state = ASSIGNED;
-      stats.rx_short++;
+  // Handle MAC packages first. They always have length 1.
+  if (rx_len == 1)
+    return rx_mac();
+
+  stats.rx_total++;
+  if (rx_len < 6) {
+    print_telegram(0, LL_WARN, "Ignored short telegram", rx_buf, rx_len);
+    if (state == WROTE || state == READ)
+      state = ASSIGNED;
+    stats.rx_short++;
+    return;
+  }
+
+  crc = calc_crc(rx_buf, rx_len - 1);
+  if (crc != rx_buf[rx_len-1])
+  {
+    LG_ERROR("Got an CRC error: 0x%02X : 0x%02X.", crc, rx_buf[rx_len-1]);
+    print_telegram(0, LL_ERROR, "CRC-ERROR", rx_buf, rx_len);
+  }
+  else
+  {
+    struct ems_telegram * tel = (struct ems_telegram *) rx_buf;
+    ems_swap_telegram(tel, rx_len);
+    ems_log_telegram(tel, rx_len);
+    ems_publish_telegram(mqtt, tel, rx_len);
+    ems_logic_evaluate_telegram(tel, rx_len);
+  }
+
+  // The MASTER_ID can always send when the bus is not assigned (as it's senseless to poll himself).
+  // This implementation does not implement the bus timeouts, so it may happen that the MASTER_ID
+  // sends while this program still thinks the bus is assigned.
+  // So simply accept messages from the MASTER_ID and reset the state if it was not a read request
+  // from a device to the MASTER_ID
+  if (rx_buf[0] == 0x88 && (state != READ || memcmp(read_expected, rx_buf, HDR_LEN))) {
+    state = RELEASED;
+    stats.rx_success++;
+    return;
+  }
+
+  switch (state)
+  {
+    case ASSIGNED:
+      if ((rx_buf[0] & 0x7F) != polled_id && (rx_buf[0] & 0x7F) != MASTER_ID) {
+          LG_ERROR("Ignored packet from 0x%02x instead of polled 0x%02x or MASTER_ID", rx_buf[0], polled_id);
+          stats.rx_sender++;
+          return;
+      }
+      dst = rx_buf[1] & 0x7f;
+      if (rx_buf[1] & 0x80) {
+          if (dst < 0x08) {
+              LG_ERROR("Ignored read from 0x%02hhx to invalid address 0x%02hhx",  rx_buf[0], dst);
+              stats.rx_format++;
+              return;
+          }
+          // Write request, prepare immediate answer
+          read_expected[0] = dst;
+          read_expected[1] = rx_buf[0];
+          read_expected[2] = rx_buf[2];
+          read_expected[3] = rx_buf[3];
+          state = READ;
+      } else {
+          if (dst > 0x00 && dst < 0x08) {
+              LG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx", rx_buf[0], dst);
+              stats.rx_format++;
+              return;
+          }
+          if (dst >= 0x08) {
+              state = WROTE;
+          }
+          // Else is broadcast, do nothing than forward.
+      }
+      break;
+    case READ:
+      // Handle immediate read response.
+      state = ASSIGNED;
+      if (memcmp(read_expected, rx_buf, HDR_LEN)) {
+          LG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",  rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
+          stats.rx_format++;
+          return;
+      }
+      if (polled_id == client_id) // received answer on read request, we can send next msg.
+          handle_poll(got_bus);
+      break;
+    case WROTE:
+      LG_ERROR("Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
+      stats.rx_sender++;
       return;
-    }
-
-    crc = calc_crc(rx_buf, rx_len - 1);
-    if (crc != rx_buf[rx_len-1])
-    {
-      LG_ERROR("Got an CRC error: 0x%02X : 0x%02X.", crc, rx_buf[rx_len-1]);
-      print_telegram(0, LL_ERROR, "CRC-ERROR", rx_buf, rx_len);
-    }
-    else
-    {
-      struct ems_telegram * tel = (struct ems_telegram *) rx_buf;
-      ems_swap_telegram(tel, rx_len);
-      ems_log_telegram(tel, rx_len);
-      ems_publish_telegram(mqtt, tel, rx_len);
-      ems_logic_evaluate_telegram(tel, rx_len);
-    }
-
-    // The MASTER_ID can always send when the bus is not assigned (as it's senseless to poll himself).
-    // This implementation does not implement the bus timeouts, so it may happen that the MASTER_ID
-    // sends while this program still thinks the bus is assigned.
-    // So simply accept messages from the MASTER_ID and reset the state if it was not a read request
-    // from a device to the MASTER_ID
-    if (rx_buf[0] == 0x88 && (state != READ || memcmp(read_expected, rx_buf, HDR_LEN))) {
-        state = RELEASED;
-    } else if (state == ASSIGNED) {
-        if ((rx_buf[0] & 0x7F) != polled_id && (rx_buf[0] & 0x7F) != MASTER_ID) {
-            LG_ERROR("Ignored package from 0x%02hhx instead of polled 0x%02hhx or MASTER_ID", rx_buf[0], polled_id);
-            stats.rx_sender++;
-            return;
-        }
-        dst = rx_buf[1] & 0x7f;
-        if (rx_buf[1] & 0x80) {
-            if (dst < 0x08) {
-                LG_ERROR("Ignored read from 0x%02hhx to invalid address 0x%02hhx",  rx_buf[0], dst);
-                stats.rx_format++;
-                return;
-            }
-            // Write request, prepare immediate answer
-            read_expected[0] = dst;
-            read_expected[1] = rx_buf[0];
-            read_expected[2] = rx_buf[2];
-            read_expected[3] = rx_buf[3];
-            state = READ;
-        } else {
-            if (dst > 0x00 && dst < 0x08) {
-                LG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx", rx_buf[0], dst);
-                stats.rx_format++;
-                return;
-            }
-            if (dst >= 0x08) {
-                state = WROTE;
-            }
-            // Else is broadcast, do nothing than forward.
-        }
-    } else if (state == READ) {
-        // Handle immediate read response.
-        state = ASSIGNED;
-        if (memcmp(read_expected, rx_buf, HDR_LEN)) {
-            LG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",  rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
-            stats.rx_format++;
-            return;
-        }
-        if (polled_id == client_id) {
-            handle_poll();
-        }
-    } else if (state == WROTE) {
-        LG_ERROR("Received package from 0x%02hhx when waiting for write ACK", rx_buf[0]);
-        stats.rx_sender++;
-        return;
-    } else if (rx_buf[0] != MASTER_ID) {
+    case RELEASED:
+      if (rx_buf[0] != MASTER_ID) {
         LG_ERROR("Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
         stats.rx_sender++;
         return;
-    }
-
-    // Do not check the CRC here. It adds too much delay and we risk missing a poll cycle.
-    stats.rx_success++;
+      }
+      break;
+    default:
+      LG_ERROR("We're in an invalid state: %d - how could that happen?!", state);
+      return;
+      break;
+  }
+  // Do not check the CRC here. It adds too much delay and we risk missing a poll cycle.
+  stats.rx_success++;
 }
+
+
 

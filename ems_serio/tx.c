@@ -8,14 +8,14 @@
 #include "ems_serio.h"
 #include "rx.h"
 #include "crc.h"
+#include "msg_queue.h"
 
 int tx_retries = -1;
-uint8_t tx_buf[MAX_PACKET_SIZE];
-size_t tx_len = 0;
 static uint8_t client_id = CLIENT_ID;
 enum STATE state = RELEASED;
 
-ssize_t tx_packet(uint8_t * msg, size_t len)
+
+static ssize_t tx_packet(uint8_t * msg, size_t len)
 {
   size_t i;
   uint8_t echo;
@@ -58,63 +58,86 @@ ssize_t tx_packet(uint8_t * msg, size_t len)
   return i;
 }
 
-void handle_poll() {
-    ssize_t ret;
-    struct timeval now;
-    int32_t have_bus;
+static void tx_release()
+{
+  uint8_t release = client_id | 0x80U;
+  if (tx_packet(&release, 1) != 1)
+    LG_ERROR("TX poll reply 'bus release' failed.");
+  state = RELEASED;
+}
 
-    // We got polled by the MASTER_ID. Send a message or release the bus.
-    // Todo: Send more than one message
-    // Todo: Release the bus after sending a message (does not work)
-    if (tx_retries < 0 || tx_retries > MAX_TX_RETRIES) {
-        if (tx_retries > MAX_TX_RETRIES) {
-            LG_ERROR("TX failed 5 times. Dropping message.");
-            tx_retries = -1;
-        }
-        // Pick a new message
-        // TODO: implement a send message trigger mechanism with buffering
-        if (tx_len > 0) {
-            tx_retries = 0;
-            if (tx_len >= 6) {
-                // Set the CRC value
-                tx_buf[tx_len - 1] = calc_crc(tx_buf, tx_len - 1);
-            }
-        }
+int check_for_bus_timeout(struct timeval got_bus)
+{
+  struct timeval now;
+  int32_t have_bus;
+  gettimeofday(&now, NULL);
+  have_bus = (now.tv_sec - got_bus.tv_sec) * 1000 + (now.tv_usec - got_bus.tv_usec) / 1000;
+  if (have_bus > MAX_BUS_TIME) {
+    LG_WARN("Occupying bus since %li ms. Releasing (the bus, not the kraken)...", have_bus);
+    tx_release();
+    return -1;
+  }
+  return 0;
+}
+
+
+void handle_poll(struct timeval got_bus)
+{
+  ssize_t ret;
+  state = ASSIGNED;
+
+  if (check_for_bus_timeout(got_bus))
+    return;
+  // We got polled by the MASTER_ID. Send a message or release the bus.
+  // Todo: Send more than one message
+  if (tx_retries < 0)
+  {
+    // Pick a new message
+    struct mq_message * msg = mq_peek();
+    if (msg)
+    {
+      tx_retries = 0;
+      if (msg->len >= 6)
+      {
+        // Set the CRC value
+        msg->buf[msg->len - 1] = calc_crc(msg->buf, msg->len - 1);
+      }
     }
+  }
 
-    gettimeofday(&now, NULL);
-    have_bus = (now.tv_sec - got_bus.tv_sec) * 1000 + (now.tv_usec - got_bus.tv_usec) / 1000;
-    LG_INFO("Occupying bus since %li ms", have_bus);
-
-    if (tx_retries >= 0 && have_bus < MAX_BUS_TIME) {
-        if ((size_t) tx_packet(tx_buf, tx_len) == tx_len) {
-            tx_retries = -1;
-            tx_len = 0;
-            if (tx_buf[1] == 0x00) {  // broadcast
-                // Release bus
-                if (tx_packet(&client_id, 1) != 1)
-                  LG_ERROR("TX poll reply failed");
-                state = RELEASED;
-            } else if (tx_buf[1] & 0x80) {
-                read_expected[0] = tx_buf[1] & 0x7f;
-                read_expected[1] = tx_buf[0];
-                read_expected[2] = tx_buf[2];
-                read_expected[3] = tx_buf[3];
-                state = READ;
-            } else {
-                // Write command
-                state = WROTE;
-            }
-        } else {
-            LG_ERROR("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
-            tx_retries++;
-            state = RELEASED;
-        }
-    } else {
-      // Nothing to send.
-      uint8_t release = client_id | 0x80U;
-      if (tx_packet(&release, 1) != 1)
-        LG_ERROR("TX poll reply failed");
-      state = RELEASED;
+  if (tx_retries >= 0)
+  {
+    struct mq_message * msg = mq_peek();
+    if ((size_t) tx_packet(msg->buf, msg->len) == msg->len)
+    {
+      tx_retries = -1;
+      if (msg->buf[1] == 0x00)             // broadcast
+      {
+        tx_release();
+      } else if ((msg->buf[1] & 0x80))     // read request
+      {
+        read_expected[0] = msg->buf[1] | 0x80;
+        read_expected[1] = msg->buf[0];
+        read_expected[2] = msg->buf[2];
+        read_expected[3] = msg->buf[3];
+        state = READ;                    // Write command
+      } else
+      {
+        state = WROTE;
+      }
+      mq_pull();
+    } else
+    {
+      LG_WARN("TX failed, %i/%i", tx_retries, MAX_TX_RETRIES);
+      tx_retries++;
+      if (tx_retries > MAX_TX_RETRIES)
+      {
+        LG_WARN("TX failed %d times. Dropping message.", MAX_TX_RETRIES);
+        tx_retries = -1;
+        mq_pull();
+        tx_release();
+      }
     }
+  }else
+    tx_release();
 }

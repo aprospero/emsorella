@@ -4,6 +4,7 @@
 
 #include "ems.h"
 #include "../../tx.h"
+#include "../../msg_queue.h"
 #include "tool/logger.h"
 #include "ctrl/com/mqtt.h"
 
@@ -255,10 +256,8 @@ void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel, 
 }
 
 
-uint8_t msg_circ_on [] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x11 } ;
-uint8_t msg_circ_off[] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x01 } ;
-
-#define EMS_SEND_MSG(MSG) { memcpy(tx_buf, MSG, sizeof(MSG)); tx_len = sizeof(MSG) + 1; }
+uint8_t msg_circ_on [] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x11, 0x00 };
+uint8_t msg_circ_off[] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x01, 0x00 };
 
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
 {
@@ -272,9 +271,9 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
       {
         LG_INFO("Check if Water's too hot or too cold.");
         if (uba_mon_fast.tmp.water >= 650 && !uba_mon_wwm.sw2.circ_active)
-          EMS_SEND_MSG(msg_circ_on)
+           mq_push(msg_circ_on, sizeof(msg_circ_on), FALSE);  // send message next time we are elected for bus master.
         else if (uba_mon_fast.tmp.water <= 550 && !uba_mon_wwm.sw2.circ_active)
-          EMS_SEND_MSG(msg_circ_off)
+          mq_push(msg_circ_off, sizeof(msg_circ_off), FALSE);  // send message next time we are elected for bus master.
       }
     break;
     case ETT_UBA_MON_SLOW:

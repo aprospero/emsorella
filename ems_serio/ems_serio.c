@@ -22,12 +22,12 @@
 #include "tx.h"
 #include "ctrl/com/mqtt.h"
 #include "tool/logger.h"
+#include "msg_queue.h"
 #include "version.h"
 
 #define DEFUALT_LOG_FAC LF_LOCAL1
 
-const uint8_t BREAK_IN[] = { 0xFF, 0x00, 0x00 };
-const uint8_t BREAK_OUT[] = { 0x00 };
+uint8_t tx_buf[1024];
 
 struct STATS stats;
 struct mqtt_handle * mqtt;
@@ -118,6 +118,8 @@ int main(int argc, char *argv[]) {
     sigaction(SIGINT, &signal_action, NULL);
     sigaction(SIGHUP, &signal_action, NULL);
     sigaction(SIGTERM, &signal_action, NULL);
+
+    mq_init(tx_buf, sizeof(tx_buf));
 
     return read_loop(argv[1]);
 }

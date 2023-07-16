@@ -65,6 +65,16 @@
 			<locationURI>virtual:/virtual</locationURI>
 		</link>
 		<link>
+			<name>code/msg_queue.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/msg_queue.c</locationURI>
+		</link>
+		<link>
+			<name>code/msg_queue.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/msg_queue.h</locationURI>
+		</link>
+		<link>
 			<name>code/rx.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/rx.c</locationURI>
