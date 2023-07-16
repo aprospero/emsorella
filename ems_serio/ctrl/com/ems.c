@@ -259,8 +259,12 @@ void ems_publish_telegram(struct mqtt_handle * mqtt, struct ems_telegram * tel, 
 uint8_t msg_circ_on [] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x11, 0x00 };
 uint8_t msg_circ_off[] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x01, 0x00 };
 
+//uint8_t msg_circ_on [] = { 0x8B, 0x08, 0xFF, 0x03, 0x01, 0xF5, 0xFF, 0x00 };
+//uint8_t msg_circ_off[] = { 0x8B, 0x08, 0xFF, 0x03, 0x01, 0xF5, 0x00, 0x00 };
+
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
 {
+  static int we_switched = FALSE;
   len -= 5;
   switch (tel->h.type)
   {
@@ -270,10 +274,20 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
       if (offsetof(struct ems_uba_monitor_fast, tmp.water) >= tel->h.offs && offsetof(struct ems_uba_monitor_fast, tmp.water) + sizeof(uba_mon_fast.tmp.water) - 1 <= tel->h.offs + len)
       {
         LG_INFO("Check if Water's too hot or too cold.");
-        if (uba_mon_fast.tmp.water >= 650 && !uba_mon_wwm.sw2.circ_active)
-           mq_push(msg_circ_on, sizeof(msg_circ_on), FALSE);  // send message next time we are elected for bus master.
-        else if (uba_mon_fast.tmp.water <= 550 && !uba_mon_wwm.sw2.circ_active)
+        if (!uba_mon_wwm.sw2.circ_active)
+        {
+          we_switched = FALSE;  // reset if circulation is off
+          if (uba_mon_fast.tmp.water >= 700)
+          {
+            mq_push(msg_circ_on, sizeof(msg_circ_on), FALSE);  // send message next time we are elected for bus master.
+            we_switched = TRUE;
+          }
+        }
+        else if (uba_mon_fast.tmp.water <= 650 && we_switched == TRUE)
+        {
           mq_push(msg_circ_off, sizeof(msg_circ_off), FALSE);  // send message next time we are elected for bus master.
+          we_switched = FALSE;
+        }
       }
     break;
     case ETT_UBA_MON_SLOW:
@@ -292,7 +306,7 @@ void print_telegram(int out, enum log_level loglevel, const char * prefix, uint8
     pos += sprintf(&text[0], "%s (%02d) %cX:", prefix, len, out ? 'T' : 'R');
 
     for (size_t i = 0; i < len; i++) {
-        pos += sprintf(&text[pos], " %02hhx", msg[i]);
+        pos += sprintf(&text[pos], " %02x", msg[i]);
         if (i == 3 || i == len - 2) {
             pos += sprintf(&text[pos], " ");
         }
