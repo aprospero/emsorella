@@ -13,54 +13,49 @@ int tx_retries = -1;
 uint8_t tx_buf[MAX_PACKET_SIZE];
 size_t tx_len = 0;
 static uint8_t client_id = CLIENT_ID;
+enum STATE state = RELEASED;
 
-ssize_t tx_packet(uint8_t *msg, size_t len) {
-    size_t i;
-    uint8_t echo;
+ssize_t tx_packet(uint8_t * msg, size_t len)
+{
+  size_t i;
+  uint8_t echo;
+  int ret;
 
-    print_telegram(1, LL_INFO, "TX", msg, len);
+  print_telegram(1, LL_INFO, "TX", msg, len);
 
-    // Write the message by character while checking the echoed characters from the MASTER_ID
-    for (i = 0; i < len; i++) {
-        LG_DEBUG("WR 0x%02hhx", msg[i]);
-        if (write(port, &msg[i], 1) != 1) {
-            LG_ERROR("write() failed");
-            return(i);
-        }
-        if (rx_wait() != 1) {
-            LG_ERROR("Echo not received after 200 ms");
-            return(i);
-        }
-        if (read(port, &echo, 1) != 1) {
-            LG_ERROR("read() failed after successful select");
-            return(i);
-        };
-        LG_DEBUG("RD 0x%02hhx", echo);
-        if (msg[i] != echo) {
-            LG_ERROR("TX fail: send 0x%02x but echo is 0x%02x", msg[i], echo);
-            return(i);
-        }
-        if (echo == 0xff) {
-            // Parity escaping also doubles a 0xff
-            if (read(port, &echo, 1) != 1) {
-                LG_ERROR("read() failed");
-                return(i);
-            }
-            LG_DEBUG("RD 0x%02hhx", echo);
-            if (echo != 0xff) {
-                LG_ERROR("TX fail: parity escaping expected 0xff but got 0x%02x", echo);
-                return(i);
-            }
-        }
+  // Write the message by character while checking the echoed characters from the MASTER_ID
+  for (i = 0; i < len; i++)
+  {
+    if (serial_push_byte(msg[i]) != 1)
+    {
+      LG_ERROR("write() failed");
+      return -1;
     }
+    for (int u = 0; u < 2; u++)
+    {
+      if ((ret = serial_pop_byte(&echo)) != 1)
+        return -1;
 
-    serial_send_break();
-    if (rx_break() == -1) {
-        LG_ERROR("TX fail: packet not ACKed by MASTER_ID");
-        return(0);
+      if (msg[i] != echo)
+      {
+        LG_ERROR("TX fail: send 0x%02x but echo is 0x%02x", msg[i], echo);
+        return -1;
+      }
     }
+  }
 
-    return(i);
+  serial_send_break();
+  if ((ret = serial_pop_byte(&echo)) == 0)
+  {
+    LG_ERROR("BREAK Echo not received after 200 ms");
+    return -1;
+  }
+  if (ret != SERIAL_RX_BREAK)
+  {
+    LG_ERROR("TX fail: packet not ACKed by MASTER_ID.");
+    return -1;
+  }
+  return i;
 }
 
 void handle_poll() {

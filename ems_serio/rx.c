@@ -1,9 +1,8 @@
 #include <stdint.h>
 #include <unistd.h>
-#include <sys/select.h>
 #include <stdio.h>
-#include <sys/time.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include "serial.h"
 #include "ems_serio.h"
@@ -15,45 +14,12 @@
 
 size_t rx_len;
 uint8_t rx_buf[MAX_PACKET_SIZE];
-enum STATE state = RELEASED;
+
 uint8_t polled_id = 0;
 uint8_t read_expected[HDR_LEN];
 struct timeval got_bus;
 static uint8_t client_id = 0x0BU;
 
-int rx_wait() {
-    fd_set rfds;
-    struct timeval tv;
-
-    // Wait maximum 200 ms for the BREAK
-    FD_ZERO(&rfds);
-    FD_SET(port, &rfds);
-    tv.tv_sec = 0;
-    tv.tv_usec = 1000*200; // 200 ms
-    return(select(FD_SETSIZE, &rfds, NULL, NULL, &tv));
-}
-
-int rx_break() {
-    // Read a BREAK from the MASTER_ID.
-    int ret;
-    uint8_t echo;
-
-    ret = rx_wait();
-    if (ret != 1) {
-        LG_ERROR("select() failed: %i", ret);
-        return(-1);
-    }
-    for (size_t i = 0; i < sizeof(BREAK_IN); i++) {
-        ret = read(port, &echo, 1);
-        if (ret != 1 || echo != BREAK_IN[i]) {
-            LG_ERROR("TX fail (%d) at char %d: expected break char 0x%02x but got 0x%02x", ret, i,
-                BREAK_IN[i], echo);
-            return(-1);
-        }
-    }
-    LG_INFO("Receiving Break succeeded.");
-    return(0);
-}
 
 enum parity_state
 {
@@ -64,78 +30,45 @@ enum parity_state
   PAST_ERROR
 };
 
-const uint8_t break_chars[] = { 0xFFu, 0x00U, 0x00U };
 
 // Loop that reads single characters until a full packet is received.
 void rx_packet(int * abort) {
 
   uint8_t c;
-  size_t valid_char;
-  enum parity_state parity = PAST_NONE;
-  unsigned int parity_errors = 0;
+  unsigned int data_abandoned = FALSE;
+  int ret;
 
   rx_len = 0;
 
   while (*abort != 1)
   {
-    valid_char = FALSE;
-    if (read(port, &c, 1) != 1) {
-      usleep(1000);
+    ret = serial_pop_byte(&c);
+
+    if (ret <= 0)
+      continue;
+    else if (ret == SERIAL_RX_BREAK)
+    {
+      if (data_abandoned == FALSE)
+      {
+        if (rx_len == 1 || calc_crc(rx_buf, rx_len - 1) == rx_buf[rx_len - 1])         // if there is valid data it shall be provided.
+          return;
+        print_telegram(0, LL_ERROR, "CRC_ERR", rx_buf, rx_len);
+      }
+      data_abandoned = FALSE;
+      rx_len = 0;
       continue;
     }
-
-    switch (parity)
+    if (rx_len == MAX_PACKET_SIZE)
     {
-      case PAST_NONE:
-        if (c == 0xFFU)
-          parity = PAST_ESCAPED;
-        else
-          valid_char = TRUE;
-        break;
-      case PAST_ESCAPED:
-        if (c != 0x00U)
-        {
-          if (c == 0xFFU)
-          {
-            valid_char = TRUE;
-            parity = PAST_NONE;
-          }
-          else
-            parity = PAST_ERROR;
-        }
-        else
-          parity = PAST_ZEROED;
-        break;
-      case PAST_ZEROED:
-        if (c != 0x00U)
-          parity = PAST_ERROR;
-        else
-          parity = PAST_BREAK;
-        break;
-      case PAST_ERROR:
-        LG_WARN("RX Break Error. Received: %02X %02X %02X.", rx_buf[rx_len - 2], rx_buf[rx_len - 1], c);
-        parity = PAST_NONE;
-        break;
-    }
-    if (valid_char)
-    {
-      rx_buf[rx_len++] = c;
-
-      if (rx_len >= MAX_PACKET_SIZE)
-      {
+      if (data_abandoned == FALSE) {
         LG_ERROR("Maximum packet size reached. Following characters ignored.");
-        print_telegram(0, LL_INFO, "ABANDONED", rx_buf, rx_len);
-        rx_len = 0;
+        print_telegram(0, LL_ERROR, "ABANDONED", rx_buf, rx_len);
+        data_abandoned = TRUE;
       }
+      print_telegram(0, LL_ERROR, "ABANDONED", &c, 1);
     }
-    else if (parity == PAST_BREAK)
-    {
-      parity = PAST_NONE;
-      if (rx_len == 1 || calc_crc(rx_buf, rx_len - 1) == rx_buf[rx_len - 1])         // if there is valid data it shall be provided.
-        return;
-      print_telegram(0, LL_ERROR, "CRC_ERR", rx_buf, rx_len);
-      rx_len = 0;
-    }
+    else
+      rx_buf[rx_len++] = c;
   }
 }
 
@@ -158,7 +91,7 @@ void rx_mac()
       }
       if (polled_id == client_id) {
           // The ACK is for us after a write command. We can send another message.
-          handle_poll();
+          handle_poll(got_bus);
       } else {
           state = ASSIGNED;
       }
@@ -179,7 +112,7 @@ void rx_mac()
       polled_id = mac;
       if (polled_id == client_id) {
           gettimeofday(&got_bus, NULL);
-          handle_poll();
+          handle_poll(got_bus);
       } else {
           state = ASSIGNED;
       }

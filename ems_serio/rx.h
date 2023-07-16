@@ -1,8 +1,16 @@
+#ifndef __RX_H
+#define __RX_H
+
+#include <stdint.h>
+#include <sys/time.h>
+
+#include "defines.h"
+
+
+extern uint8_t read_expected[HDR_LEN];
+extern struct timeval got_bus;
+
 void rx_packet(int *abort);
 void rx_done();
 
-extern enum STATE state;
-extern uint8_t read_expected[HDR_LEN];
-extern struct timeval got_bus;
-int rx_wait();
-int rx_break();
+#endif // __RX_H
