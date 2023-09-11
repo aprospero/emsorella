@@ -160,7 +160,7 @@ void rx_done() {
   // sends while this program still thinks the bus is assigned.
   // So simply accept messages from the MASTER_ID and reset the state if it was not a read request
   // from a device to the MASTER_ID
-  if (rx_buf[0] == 0x88 && (state != READ || memcmp(read_expected, rx_buf, HDR_LEN))) {
+  if (rx_buf[0] == 0x08 && (state != READ || memcmp(read_expected, rx_buf, HDR_LEN))) {
     state = RELEASED;
     stats.rx_success++;
     return;
