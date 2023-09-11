@@ -185,7 +185,7 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
     }
     break;
     default:
-      print_telegram(0, LL_INFO, "Unknown EMS  Telegram", (uint8_t *) tel, len);
+      print_telegram(0, LL_INFO, "Unknown EMS Telegram", (uint8_t *) tel, len);
     break;
   }
 

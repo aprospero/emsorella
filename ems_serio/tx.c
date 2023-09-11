@@ -21,7 +21,7 @@ static ssize_t tx_packet(uint8_t * msg, size_t len)
   uint8_t echo;
   int ret;
 
-  print_telegram(1, LL_INFO, "TX", msg, len);
+  print_telegram(1, len > 1 ? LL_INFO : LL_DEBUG_MORE, "TX", msg, len);
 
   // Write the message by character while checking the echoed characters from the MASTER_ID
   for (i = 0; i < len; i++)

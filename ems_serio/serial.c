@@ -215,7 +215,7 @@ int serial_pop_byte(uint8_t * buf)
     }
     else
     {
-      LG_DEBUG("RD 0x%02x", *buf);
+      LG_DBGMX("RD 0x%02x", *buf);
       switch (++cnt)
       {
         case 1: if      (*buf != 0xFF) return ret; /* default case     */
@@ -245,7 +245,7 @@ int serial_push_byte(uint8_t byte)
     LG_ERROR("Serial Port write error: %s", strerror(errno));
   else if (ret == 1) {
     last_sent = byte;
-    LG_DEBUG("WR 0x%02x", byte);
+    LG_DBGMX("WR 0x%02x", byte);
     // wait for pending transmissions done
 
   }
