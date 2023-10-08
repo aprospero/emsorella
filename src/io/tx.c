@@ -62,13 +62,13 @@ static void tx_release()
   uint8_t release = client_id | 0x80U;
   if (tx_packet(&release, 1) != 1)
     LG_ERROR("TX poll reply 'bus release' failed.");
-  state = RELEASED;
+  state_set(RELEASED);
 }
 
 void tx_update()
 {
   ssize_t ret;
-  state = ASSIGNED;
+  state_set(ASSIGNED);
 
   if (!state_got_bus())
     return;
@@ -100,10 +100,10 @@ void tx_update()
       } else if ((msg->buf[1] & 0x80))     // read request
       {
         state_set_expected(msg->buf);
-        state = READ;                    // Write command
+        state_set(READ);                    // Write command
       } else
       {
-        state = WROTE;
+        state_set(WROTE);
       }
       mq_pull();
     } else

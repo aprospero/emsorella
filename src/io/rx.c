@@ -31,9 +31,13 @@ int rx_mac()
   int do_update_tx = FALSE;
 
   print_telegram(0, LL_DEBUG_MORE, "MAC", rx_buf, rx_len);
+
+  int is_bus_released = (mac & 0x80) ? TRUE : FALSE;
+  mac &= ~0x80;
+
   if (mac == 0x01) {
       // Got an ACK. Warn if there was no write from the bus-owning device.
-      if (state != WROTE) {
+      if (!state_is(WROTE)) {
           LG_ERROR("Got an ACK without prior write message from 0x%02hhx", polled_id);
           stats.rx_mac_errors++;
       }
@@ -41,28 +45,27 @@ int rx_mac()
           // The ACK is for us after a write command. We can send another message.
         do_update_tx = TRUE;
       } else {
-          state = ASSIGNED;
+        state_set(ASSIGNED);
       }
-  } else if (mac >= 0x88) {
+  } else if (is_bus_released) {
       // Bus release.
-      if (state != ASSIGNED) {
+      if (!state_is(ASSIGNED)) {
         LG_DEBUG("Got bus release from 0x%02hhx without prior poll request", mac);
           stats.rx_mac_errors++;
       }
       polled_id = 0;
-      state = RELEASED;
-  } else if (!(mac & 0x80)) {
+      state_set(RELEASED);
+  } else if (mac >= 0x08) { // lower mac addresses seem to be forbidden?
       // Bus assign. We may not be in released state if the last queried device did not exist.
-      if (state != RELEASED && state != ASSIGNED) {
-        LG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx", mac, polled_id);
+      if (!(state_is(RELEASED) || state_is(ASSIGNED))) {
+        LG_DEBUG("Got bus assign to 0x%02hhx without prior bus release from %02hhx. Actual state: %s.", mac, polled_id, state_get_str());
         stats.rx_mac_errors++;
       }
       polled_id = mac;
+      state_set(ASSIGNED);
       if (polled_id == client_id) {  // we have aquired the bus and can begin to send msgs.
           state_get_bus();
           do_update_tx = TRUE;
-      } else {
-          state = ASSIGNED;
       }
   } else {
       LG_DEBUG("Ignored unknown MAC package 0x%02hhx", mac);
@@ -84,8 +87,8 @@ static int rx_done() {
   stats.rx_total++;
   if (rx_len < 6) {
     print_telegram(0, LL_WARN, "Ignored short telegram", rx_buf, rx_len);
-    if (state == WROTE || state == READ)
-      state = ASSIGNED;
+    if (state_is(WROTE) || state_is(READ))
+      state_set(ASSIGNED);
     stats.rx_short++;
     goto end_of_done;
   }
@@ -110,13 +113,13 @@ static int rx_done() {
   // sends while this program still thinks the bus is assigned.
   // So simply accept messages from the MASTER_ID and reset the state if it was not a read request
   // from a device to the MASTER_ID
-  if (rx_buf[0] == 0x08 && (state != READ || state_cmp_expected(rx_buf))) {
-    state = RELEASED;
+  if (rx_buf[0] == 0x08 && (!state_is(READ) || state_cmp_expected(rx_buf))) {
+    state_set(RELEASED);
     stats.rx_success++;
     goto end_of_done;
   }
 
-  switch (state)
+  switch (state_get())
   {
     case ASSIGNED:
       if ((rx_buf[0] & 0x7F) != polled_id && (rx_buf[0] & 0x7F) != MASTER_ID) {
@@ -133,7 +136,7 @@ static int rx_done() {
           }
           // Write request, prepare immediate answer
           state_set_expected(rx_buf);
-          state = READ;
+          state_set(READ);
       } else {
           if (dst > 0x00 && dst < 0x08) {
               LG_ERROR("Ignored write from 0x%02hhx to invalid address 0x%02hhx", rx_buf[0], dst);
@@ -141,14 +144,14 @@ static int rx_done() {
               goto end_of_done;
           }
           if (dst >= 0x08) {
-              state = WROTE;
+              state_set(WROTE);
           }
           // Else is broadcast, do nothing than forward.
       }
       break;
     case READ:
       // Handle immediate read response.
-      state = ASSIGNED;
+      state_set(ASSIGNED);
       if (state_cmp_expected(rx_buf)) {
           LG_ERROR("Ignored not expected read header: %02hhx %02hhx %02hhx %02hhx",  rx_buf[0], rx_buf[1], rx_buf[2], rx_buf[3]);
           stats.rx_format++;
@@ -169,7 +172,7 @@ static int rx_done() {
       }
       break;
     default:
-      LG_ERROR("We're in an invalid state: %d - how could that happen?!", state);
+      LG_ERROR("We're in an invalid state: %d - how could that happen?!", state_get());
       goto end_of_done;
       break;
   }
