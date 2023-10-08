@@ -1,1 +1,0 @@
-void ems_serio_log(int level, char* fmt, ...);
