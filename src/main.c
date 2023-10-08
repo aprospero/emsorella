@@ -34,11 +34,15 @@ int abort_rx_loop = FALSE;
 int read_loop(const char * serial_port)
 {
   struct mqtt_handle * mqtt;
-  int ret = serial_open(serial_port);
+  int ret;
+
+  mq_init(tx_buf, sizeof(tx_buf));
+
+  ret = serial_open(serial_port);
   if (ret != 0)
   {
-      LG_CRITICAL("Failed to open %s: %i", serial_port, ret);
-      goto FAILURE;
+    LG_CRITICAL("Failed to open %s: %i", serial_port, ret);
+    goto END;
   }
   LG_INFO("Serial port %s opened", serial_port);
 
@@ -47,29 +51,34 @@ int read_loop(const char * serial_port)
   if (mqtt == NULL)
   {
     LG_CRITICAL("Could not initialize mqtt API.");
-    goto FAILURE;
+    goto END;
   }
-  LG_INFO("MQTT API Initialized.\n", serial_port);
   ems_init(mqtt);
-    LG_INFO("Starting EMS bus access.");
-    while (abort_rx_loop == FALSE) {
-        rx_packet(&abort_rx_loop);
-        if (abort_rx_loop == FALSE)
-          rx_done();
-        if (abort_rx_loop == FALSE)
-          mqtt_loop(mqtt, 0);
-    }
-    mqtt_close(mqtt);
-    serial_close();
-    print_stats();
-    return 0;
+  LG_INFO("MQTT API Initialized.\n", serial_port);
 
-FAILURE:
-    if (ret)
-      serial_close();
-    if (mqtt)
-      mqtt_close(mqtt);
-    return -1;
+  LG_INFO("Starting EMS bus access.");
+
+  for(int phase = 0; !abort_rx_loop; phase ^= 0x01)
+    switch (phase) {
+      default: break;
+
+      case 0: if (rx_packet(&abort_rx_loop))
+                tx_update();
+              break;
+      case 1: mqtt_loop(mqtt, 0);
+              break;
+    }
+
+  print_stats();
+
+END:
+  if (!ret)
+    serial_close();
+  if (mqtt) {
+    mqtt_close(mqtt);
+    return 0;
+  }
+  return -1;
 }
 
 void sig_stop() {
@@ -105,8 +114,6 @@ int main(int argc, char *argv[]) {
     sigaction(SIGINT, &signal_action, NULL);
     sigaction(SIGHUP, &signal_action, NULL);
     sigaction(SIGTERM, &signal_action, NULL);
-
-    mq_init(tx_buf, sizeof(tx_buf));
 
     return read_loop(argv[1]);
 }

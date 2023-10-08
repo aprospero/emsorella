@@ -4,14 +4,14 @@
 #include <stdio.h>
 
 #include "ctrl/com/ems.h"
+#include "ctrl/com/state.h"
 #include "io/serial.h"
-#include "io/rx.h"
 #include "tools/crc.h"
 #include "tools/msg_queue.h"
+#include "defines.h"
 
 int tx_retries = -1;
 static uint8_t client_id = CLIENT_ID;
-enum STATE state = RELEASED;
 
 
 static ssize_t tx_packet(uint8_t * msg, size_t len)
@@ -65,30 +65,14 @@ static void tx_release()
   state = RELEASED;
 }
 
-int check_for_bus_timeout(struct timeval got_bus)
-{
-  struct timeval now;
-  int32_t have_bus;
-  gettimeofday(&now, NULL);
-  have_bus = (now.tv_sec - got_bus.tv_sec) * 1000 + (now.tv_usec - got_bus.tv_usec) / 1000;
-  if (have_bus > MAX_BUS_TIME) {
-    LG_WARN("Occupying bus since %li ms. Releasing (the bus, not the kraken)...", have_bus);
-    tx_release();
-    return -1;
-  }
-  return 0;
-}
-
-
-void handle_poll(struct timeval got_bus)
+void tx_update()
 {
   ssize_t ret;
   state = ASSIGNED;
 
-  if (check_for_bus_timeout(got_bus))
+  if (!state_got_bus())
     return;
   // We got polled by the MASTER_ID. Send a message or release the bus.
-  // Todo: Send more than one message
   if (tx_retries < 0)
   {
     // Pick a new message
@@ -115,10 +99,7 @@ void handle_poll(struct timeval got_bus)
         tx_release();
       } else if ((msg->buf[1] & 0x80))     // read request
       {
-        read_expected[0] = msg->buf[1] | 0x80;
-        read_expected[1] = msg->buf[0];
-        read_expected[2] = msg->buf[2];
-        read_expected[3] = msg->buf[3];
+        state_set_expected(msg->buf);
         state = READ;                    // Write command
       } else
       {

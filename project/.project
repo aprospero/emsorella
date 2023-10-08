@@ -170,6 +170,16 @@
 			<locationURI>PARENT-1-PROJECT_LOC/src/ctrl/com/ems.h</locationURI>
 		</link>
 		<link>
+			<name>src/ctrl/com/state.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/src/ctrl/com/state.c</locationURI>
+		</link>
+		<link>
+			<name>src/ctrl/com/state.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/src/ctrl/com/state.h</locationURI>
+		</link>
+		<link>
 			<name>src/linuxtools/ctrl/com</name>
 			<type>2</type>
 			<locationURI>virtual:/virtual</locationURI>

@@ -13,8 +13,10 @@
 #include "linuxtools/ctrl/logger.h"
 #include "io/serial.h"
 
+// EMS Serial line implementation for imx6
+
 // LEGACY
-#define SERIAL_TX_BIT_TIME 104                             // bit time @9600 baud
+#define SERIAL_TX_BIT_TIME 104           // bit time in µs @ 9600 baud
 
 // HT3/Junkers - 7 bit delay.
 #define SERIAL_TX_WAIT (SERIAL_TX_BIT_TIME * 7)
@@ -124,7 +126,9 @@ int serial_close() {
       ret |= tmp;
     }
   }
-  return(ret | close(port));
+  if (port > 0)
+    ret |= close(port);
+  return ret;
 }
 
 void serial_send_break()
@@ -139,51 +143,6 @@ void serial_send_break()
   usleep(SERIAL_TX_BRK);
   uart_reg[UART_REG_UCR1] &= ~UART_FLG_UCR1_SNDBRK;
 }
-
-//static inline int pop_byte(uint8_t * buf)
-//{
-//  int ret= read(port, buf, 1);
-//  if (ret < 0)
-//    LG_ERROR("Serial Port read error: %s", strerror(errno));
-//  else if (ret == 0)
-//    LG_ERROR("Serial Port read none.");
-//  else if (ret == 1)
-//    LG_DEBUG("RD 0x%02x", *buf);
-//  return ret;
-//}
-//
-//int serial_pop_byte(uint8_t * buf)
-//{
-//  int ret= pop_byte(buf);
-//  if (ret <= 0)
-//    return ret;
-//  else if (*buf == 0xFF)  /* escape char */
-//  {
-//    do {
-//      ret = pop_byte(buf);
-//    } while (ret == 0);
-//    if (ret < 0)
-//      return ret;
-//    else if (*buf == 0xFF)  /* escaped 0xFF */
-//      return ret;
-//    else if (*buf == 0x00) /* BREAK received? */
-//    {
-//      do {
-//        ret = pop_byte(buf);
-//      } while (ret == 0);
-//      if (ret < 0)
-//        return ret;
-//      else if (*buf == 0x00) /* BREAK received! */
-//        return SERIAL_RX_BREAK;
-//    }
-//  }
-//  else
-//    return ret;
-//
-//  LG_ERROR("Serial received invalid escape character: 0x%02x", *buf);
-//  return -1;
-//
-//}
 
 int serial_wait() {
     fd_set rfds;
