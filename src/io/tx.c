@@ -67,7 +67,6 @@ static void tx_release()
 
 void tx_update()
 {
-  ssize_t ret;
   state_set(ASSIGNED);
 
   if (!state_got_bus())

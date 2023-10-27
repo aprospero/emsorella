@@ -10,7 +10,7 @@
 #include <sys/time.h>
 #include <sys/mman.h>
 
-#include "linuxtools/ctrl/logger.h"
+#include "ctrl/logger.h"
 #include "io/serial.h"
 
 // EMS Serial line implementation for imx6

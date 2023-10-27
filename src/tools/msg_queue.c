@@ -1,7 +1,7 @@
 #include <string.h>
 
 #include "msg_queue.h"
-#include "linuxtools/ctrl/logger.h"
+#include "ctrl/logger.h"
 
 
 #define FREE_HEAD (hnd.buf_sz - (hnd.pfree - hnd.buf))

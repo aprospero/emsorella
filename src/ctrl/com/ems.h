@@ -4,8 +4,8 @@
 #include <stddef.h>
 #include <unistd.h>
 
-#include "linuxtools/ctrl/logger.h"
-#include "linuxtools/ctrl/com/mqtt.h"
+#include "ctrl/logger.h"
+#include "ctrl/com/mqtt.h"
 
 
 #define ONOFF(VALUE) ((VALUE) ? "ON " : "OFF")
@@ -14,16 +14,11 @@
 #define TRIVAL(VALUE) ((VALUE)[2] + ((VALUE)[1] << 8) + ((VALUE)[0] << 16))
 
 
-#define SIZE_TEST(NAME,TYPE,SIZE)   \
-  struct size_test_##NAME {          \
-    int min[sizeof(TYPE) - SIZE];     \
-    int max[SIZE - sizeof(TYPE)];  }
+#define SIZE_TEST(NAME,TYPE,SIZE) struct size_test_##NAME { int i[(sizeof(TYPE)== SIZE) * 2 - 1]; }
 
 
-#define OFFSET_TEST(NAME,TYPE,MEMBER,OFFS)    \
-    struct offs_test_##NAME {                  \
-      int min[offsetof(TYPE, MEMBER) - OFFS];   \
-      int max[OFFS - offsetof(TYPE, MEMBER)]; }
+
+#define OFFSET_TEST(NAME,TYPE,MEMBER,OFFS) struct offs_test_##NAME { int i[(offsetof(TYPE, MEMBER) == OFFS) * 2 - 1]; }
 
 
 enum ems_tel_type
@@ -191,7 +186,7 @@ struct ems_plus_t01a5
 
 union ems_plus_payload
 {
-  uint8_t raw[0];
+  uint8_t raw[1];
   struct ems_plus_t01a5 t01a5;
 };
 
@@ -210,7 +205,7 @@ struct ems_plus_data
 
 union ems_telegram_data
 {
-  uint8_t raw[0];
+  uint8_t raw[1];
   struct ems_uba_monitor_fast uba_mon_fast;
   struct ems_uba_monitor_slow uba_mon_slow;
   struct ems_uba_monitor_wwm  uba_mon_wwm;

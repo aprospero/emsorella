@@ -7,8 +7,8 @@
 #include "serial.h"
 #include "tools/crc.h"
 #include "tools/stats.h"
-#include "linuxtools/ctrl/com/mqtt.h"
-#include "linuxtools/ctrl/logger.h"
+#include "ctrl/com/mqtt.h"
+#include "ctrl/logger.h"
 #include "ctrl/com/ems.h"
 #include "ctrl/com/state.h"
 

@@ -4,7 +4,7 @@
 #include <string.h>
 
 #include "state.h"
-#include "linuxtools/stuff.h"
+#include "stuff.h"
 
 enum STATE int_state = RELEASED;
 const char * state_str[] =

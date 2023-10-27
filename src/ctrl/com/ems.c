@@ -5,8 +5,8 @@
 #include "ems.h"
 #include "io/tx.h"
 #include "tools/msg_queue.h"
-#include "linuxtools/ctrl/logger.h"
-#include "linuxtools/ctrl/com/mqtt.h"
+#include "ctrl/logger.h"
+#include "ctrl/com/mqtt.h"
 
 struct ems_plus_t01a5       emsplus_t01a5;
 struct ems_uba_monitor_fast uba_mon_fast;
@@ -56,10 +56,10 @@ struct entity_params uba_mon_slow_params[] =
 };
 
 
-#define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) (MSG).MEMBER = ntohs((MSG).MEMBER); } while (0)
-#define CHECK_PUB(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER); } while (0)
+#define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) { (MSG).MEMBER = ntohs((MSG).MEMBER); } }
+#define CHECK_PUB(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) { mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER); } }
 #define CHECK_PUB_TRIVAL(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, ((MSG).MEMBER)[0] + (((MSG).MEMBER)[1] << 8) + (((MSG).MEMBER)[0] << 16)); } while (0)
-#define CHECK_PUB_FLG(MSG,MEMBER,FLAG,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER.FLAG); } while (0)
+#define CHECK_PUB_FLG(MSG,MEMBER,FLAG,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER.FLAG); }
 #define CHECK_PUB_FORMATTED(MSG,MEMBER,TYPE,ENTITY,FORMAT,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= OFFS && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_formatted(mqtt, TYPE, ENTITY, FORMAT, (MSG).MEMBER); } while (0)
 
 #define HTONU_TRIVAL(VALUE) (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16))
@@ -128,8 +128,6 @@ void ems_swap_telegram(struct ems_telegram * tel, size_t len)
 
 void ems_log_telegram(struct ems_telegram * tel, size_t len)
 {
-  float nan = 0.0 / 0.0;
-
   switch (tel->h.type)
   {
     case ETT_EMSPLUS:
@@ -153,7 +151,7 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
 
       LG_DEBUG("Mon fast   VL: %04.1f°C/%04.1f°C (ist/soll)  RL: %04.1f °C     WW: %04.1f °C     Tmp?: %04.1f °C."
           , 0.1f * msg->vl_ist, 1.0f * msg->vl_soll, NANVAL(msg->tmp.rl), NANVAL(msg->tmp.water), NANVAL(msg->tmp.tmp1 ));
-      LG_DEBUG("  len: % 2u  Pump: %s       Blow: %s       Gas: %s      Ignite: %s      Circ: %s       Valve: %s.", len
+      LG_DEBUG("  len: %2u  Pump: %s       Blow: %s       Gas: %s      Ignite: %s      Circ: %s       Valve: %s.", len
                 ,ONOFF(msg->on.pump), ONOFF(msg->on.blower), ONOFF(msg->on.gas    ), ONOFF(msg->on.ignite ), ONOFF(msg->on.circ   ), ONOFF(msg->on.valve  ));
       LG_DEBUG("  src: %02X  KsP: %03d%%/%03d%% (akt/max)    FlCurr: %04.1f µA Druck: %04.1f bar.", tel->h.src
                 , msg->ks_akt_p, msg->ks_max_p, NANVAL(msg->fl_current), NANVA8(msg->sys_press));
@@ -166,9 +164,9 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
       struct ems_uba_monitor_slow * msg = &uba_mon_slow;
 
       print_telegram(1, LL_DEBUG_MORE, "EMS Telegram UBA_Mon_slow", (uint8_t *) tel, len);
-      LG_DEBUG("Mon slow  Out: %04.1f °C    boiler: %04.1f °C    exhaust: %04.1f °C     Pump Mod: % 3u %%"
+      LG_DEBUG("Mon slow  Out: %04.1f °C    boiler: %04.1f °C    exhaust: %04.1f °C     Pump Mod: %3u %%"
           , NANVAL(msg->tmp_out), NANVAL(msg->tmp_boiler), NANVAL(msg->tmp_exhaust), msg->pump_mod);
-      LG_DEBUG("  len: % 2u       Burner starts: % 8d       runtime: % 8d min    rt-stage2: % 8d min      rt-heating: % 8d min.", len
+      LG_DEBUG("  len: %2u       Burner starts: % 8d       runtime: % 8d min    rt-stage2: % 8d min      rt-heating: % 8d min.", len
                 ,TRIVAL(msg->burner_starts), TRIVAL(msg->run_time), TRIVAL(msg->run_time_stage_2), TRIVAL(msg->run_time_heating));
       LG_DEBUG("  src: %02X     dst: %02X.", tel->h.src, tel->h.dst);
     }
@@ -180,9 +178,9 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
       print_telegram(1, LL_DEBUG_MORE, "EMS Telegram UBA_Mon_wwm", (uint8_t *) tel, len);
       LG_DEBUG("Mon WWM   Ist: %04.1f°C/%04.1f°C  Soll: %04.1f °C     Lädt: %s      Durchfluss: %04.1f l/m."
           , NANVAL(msg->ist[0]), NANVAL(msg->ist[1]), 1.0f * msg->soll, ONOFF(msg->sw2.is_loading), NANVA8(msg->throughput));
-      LG_DEBUG("  len: % 2u Circ: %s       Man: %s       Day: %s      Single: %s      Day: %s       Reload: %s.", len
+      LG_DEBUG("  len: %2u Circ: %s       Man: %s       Day: %s      Single: %s      Day: %s       Reload: %s.", len
                 ,ONOFF(msg->sw2.circ_active), ONOFF(msg->sw2.circ_manual), ONOFF(msg->sw2.circ_daylight), ONOFF(msg->sw1.single_load ), ONOFF(msg->sw1.daylight_mode), ONOFF(msg->sw1.reloading));
-      LG_DEBUG("  src: %02X Type: %02X    prod: %s    Detox: %s     count: % 8u   time: % 8u min   temp: %s.", tel->h.src
+      LG_DEBUG("  src: %02X Type: %02X    prod: %s    Detox: %s     count: %8u   time: %8u min   temp: %s.", tel->h.src
                 , msg->type, ONOFF(msg->sw1.active), ONOFF(msg->sw1.desinfect), TRIVAL(msg->op_count), TRIVAL(msg->op_time), msg->sw1.temp_ok ? " OK" : "NOK");
       LG_DEBUG("  dst: %02X WWErr: %s    PR1Err: %s   PR2Err: %s   DesErr: %s.", tel->h.dst
                , ONOFF(msg->fail.ww), ONOFF(msg->fail.probe_1), ONOFF(msg->fail.probe_2), ONOFF(msg->fail.desinfect));
