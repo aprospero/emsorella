@@ -23,38 +23,41 @@
 #include "tools/msg_queue.h"
 #include "ctrl/com/ems.h"
 #include "tools/stats.h"
+#include "args.h"
 #include "version.h"
 
 #define DEFAULT_LOG_FAC LF_LOCAL1
 
 uint8_t tx_buf[1024];
 
+struct emsorella_config cfg;
+
 int abort_rx_loop = FALSE;
 
-int read_loop(const char * serial_port)
+int read_loop()
 {
-  struct mqtt_handle * mqtt;
+  struct mqtt_handle * mqtt = NULL;
   int ret;
 
   mq_init(tx_buf, sizeof(tx_buf));
 
-  ret = serial_open(serial_port);
+  ret = serial_open(cfg.serial_device);
   if (ret != 0)
   {
-    LG_CRITICAL("Failed to open %s: %i", serial_port, ret);
+    LG_CRITICAL("Failed to open %s: %i", cfg.serial_device, ret);
     goto END;
   }
-  LG_INFO("Serial port %s opened", serial_port);
+  LG_INFO("Serial port %s opened", cfg.serial_device);
 
   LG_INFO("Initializing MQTT API.");
-  mqtt = mqtt_init("ems", "MTDC", 2);
+  mqtt = mqtt_init(&cfg.mqtt);
   if (mqtt == NULL)
   {
     LG_CRITICAL("Could not initialize mqtt API.");
     goto END;
   }
   ems_init(mqtt);
-  LG_INFO("MQTT API Initialized.\n", serial_port);
+  LG_INFO("MQTT API Initialized.\n");
 
   LG_INFO("Starting EMS bus access.");
 
@@ -88,8 +91,11 @@ void sig_stop() {
 int main(int argc, char *argv[]) {
 
    struct sigaction signal_action;
+
+   parseArgs(argc, argv, &cfg);
+
    char * app_name = strrchr(argv[0], '/');
-   if (app_name == NULL)
+   if (cfg.prg_name == NULL)
      app_name = argv[0];
    else
      app_name++;
@@ -103,11 +109,11 @@ int main(int argc, char *argv[]) {
     if (argc == 3)
       log_set_level_state(atoi(argv[2]), TRUE);
 
-    log_push(LL_NONE, "##########################################################################");
+    log_push(LL_NONE, "############################################################################################");
     log_push(LL_NONE, "Starting %s "APP_VERSION" - on:%s, LogFacility:%s Level:%s.",
-             app_name, argv[1], log_get_facility_name(DEFAULT_LOG_FAC), log_get_level_name(atoi(argv[2]), TRUE));
-    log_push(LL_NONE, "##########################################################################");
-    // Set signal handler and wait for the thread
+             cfg.prg_name, cfg.serial_device, log_get_facility_name(cfg.log_facility), log_get_level_name(cfg.log_level, TRUE));
+    log_push(LL_NONE, "############################################################################################");
+    // Set signal handler
     signal_action.sa_handler = sig_stop;
     sigemptyset(&signal_action.sa_mask);
     signal_action.sa_flags = 0;
@@ -115,5 +121,5 @@ int main(int argc, char *argv[]) {
     sigaction(SIGHUP, &signal_action, NULL);
     sigaction(SIGTERM, &signal_action, NULL);
 
-    return read_loop(argv[1]);
+    return read_loop();
 }
