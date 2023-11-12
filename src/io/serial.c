@@ -41,7 +41,7 @@ int mem_fd = -1;
 
 int serial_open(const char *tty_path) {
     // Opens a raw serial with parity marking enabled
-    int ret, fd;
+    int ret;
 
     mem_fd = open("/dev/mem", O_RDWR);
     if (-1 == mem_fd) {
