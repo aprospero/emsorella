@@ -38,6 +38,7 @@ int read_loop()
 {
   struct mqtt_handle * mqtt = NULL;
   int ret;
+  int do_log = TRUE;
 
   mq_init(tx_buf, sizeof(tx_buf));
 
@@ -50,7 +51,15 @@ int read_loop()
   LG_INFO("Serial port %s opened", cfg.serial_device);
 
   LG_INFO("Initializing MQTT API.");
-  mqtt = mqtt_init(&cfg.mqtt);
+  while(!abort_rx_loop && mqtt_init(&mqtt, &cfg.mqtt) == MQTT_RET_RETRY)
+  {
+    if (do_log)
+    {
+      LG_WARN("MQTT - Could not connect to broker. Syscall returned '%s'. Retry every 5 sec.", strerror(errno));
+      do_log = FALSE;
+    }
+    sleep(5);
+  }
   if (mqtt == NULL)
   {
     LG_CRITICAL("Could not initialize mqtt API.");
