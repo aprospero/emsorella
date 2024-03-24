@@ -230,7 +230,7 @@ void ems_publish_telegram(struct ems_telegram * tel, size_t len)
     break;
     case ETT_UBA_MON_SLOW:
       CHECK_PUB(uba_mon_slow, tmp_out      , "sensor", "uba_outside" , tel->h.offs, len);
-      CHECK_PUB(uba_mon_slow, run_time_sane, "sensor", "uba_rt"      , tel->h.offs, len);
+//      CHECK_PUB(uba_mon_slow, run_time_sane, "sensor", "uba_rt"      , tel->h.offs, len);
       CHECK_PUB(uba_mon_slow, pump_mod     , "sensor", "uba_pump_mod", tel->h.offs, len);
 //      CHECK_PUB(uba_mon_slow, run_time_heating, "sensor", "uba_rt_heating", tel->h.offs, len);
 //      CHECK_PUB(uba_mon_slow, run_time_stage_2, "sensor", "uba_rt_stage2", tel->h.offs, len);
