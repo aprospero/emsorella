@@ -165,7 +165,7 @@ static int rx_done() {
       stats.rx_sender++;
       goto end_of_done;
     case RELEASED:
-      if (rx_buf[0] != MASTER_ID) {
+      if ((rx_buf[0] & 0x7f) != MASTER_ID) {
         LG_ERROR("Received package from 0x%02hhx when bus is not assigned", rx_buf[0]);
         stats.rx_sender++;
         goto end_of_done;
