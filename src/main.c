@@ -66,7 +66,7 @@ int read_loop()
     goto END;
   }
   ems_init(mqtt);
-  LG_INFO("MQTT API Initialized.\n");
+  LG_INFO("MQTT API Initialized.");
 
   LG_INFO("Starting EMS bus access.");
 
@@ -99,36 +99,23 @@ void sig_stop() {
 
 int main(int argc, char *argv[]) {
 
-   struct sigaction signal_action;
+  struct sigaction signal_action;
 
-   parseArgs(argc, argv, &cfg);
+  parseArgs(argc, argv, &cfg);
 
-   char * app_name = strrchr(argv[0], '/');
-   if (cfg.prg_name == NULL)
-     app_name = argv[0];
-   else
-     app_name++;
+  log_init("ems_serio",  cfg.log_facility, cfg.log_level);
 
-    log_init("ems_serio",  DEFAULT_LOG_FAC, LL_CRITICAL);
+  log_push(LL_NONE, "############################################################################################");
+  log_push(LL_NONE, "Starting %s "APP_VERSION" - on:%s, LogFacility:%s Level:%s.",
+           cfg.prg_name, cfg.serial_device, log_get_facility_name(cfg.log_facility), log_get_level_name(cfg.log_level, TRUE));
+  log_push(LL_NONE, "############################################################################################");
+  // Set signal handler
+  signal_action.sa_handler = sig_stop;
+  sigemptyset(&signal_action.sa_mask);
+  signal_action.sa_flags = 0;
+  sigaction(SIGINT, &signal_action, NULL);
+  sigaction(SIGHUP, &signal_action, NULL);
+  sigaction(SIGTERM, &signal_action, NULL);
 
-    if (argc < 2) {
-      LG_ERROR("Usage: %s <ttypath> [logmask:default=error]\n", argv[0]);
-        return(-1);
-    }
-    if (argc == 3)
-      log_set_level_state(atoi(argv[2]), TRUE);
-
-    log_push(LL_NONE, "############################################################################################");
-    log_push(LL_NONE, "Starting %s "APP_VERSION" - on:%s, LogFacility:%s Level:%s.",
-             cfg.prg_name, cfg.serial_device, log_get_facility_name(cfg.log_facility), log_get_level_name(cfg.log_level, TRUE));
-    log_push(LL_NONE, "############################################################################################");
-    // Set signal handler
-    signal_action.sa_handler = sig_stop;
-    sigemptyset(&signal_action.sa_mask);
-    signal_action.sa_flags = 0;
-    sigaction(SIGINT, &signal_action, NULL);
-    sigaction(SIGHUP, &signal_action, NULL);
-    sigaction(SIGTERM, &signal_action, NULL);
-
-    return read_loop();
+  return read_loop();
 }

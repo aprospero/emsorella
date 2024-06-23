@@ -9,6 +9,7 @@
 
 int parseArgs(int argc, char * argv[], struct emsorella_config * config)
 {
+  int err = 0;
   char * end;
   int idx, opt;
   optind = 1;
@@ -127,13 +128,12 @@ int parseArgs(int argc, char * argv[], struct emsorella_config * config)
       }
     }
   }
-
+  return 0;
   {
-    int err = 0;
   ON_ERROR:
     err = 1;
   ON_HELP:
-    fprintf(err ? stderr : stdout, "usage: %s [-hV] [-d <can-device>] [-r <mqtt remote address>] [-p <mqtt remote port>] [-i <mqtt client-id>] [-t <mqtt topic>] [-q <mqtt QoS>] [-v <log level>] [-f <log facility>]\n", config->prg_name);
+    fprintf(err ? stderr : stdout, "usage: %s [-hV] [-d <serial-device>] [-r <mqtt remote address>] [-p <mqtt remote port>] [-i <mqtt client-id>] [-t <mqtt topic>] [-q <mqtt QoS>] [-v <log level>] [-f <log facility>]\n", config->prg_name);
     if (err)
       exit(1);
     fprintf(stdout, "\nOptions:\n");
