@@ -217,10 +217,7 @@ void ems_publish_telegram(struct ems_telegram * tel, size_t len)
       switch (tel->d.emsplus.type)
       {
         case EMSPLUS_01A5:
-        {
-          if (offsetof(typeof(emsplus_t01a5),room_temp_act) >= tel->h.offs && offsetof(typeof(emsplus_t01a5),room_temp_act) + sizeof((emsplus_t01a5).room_temp_act) - 1 <= ((tel->h.offs) + (len)))
-               mqtt_publish(mqtt, "sensor", "CW400_room_temp", (emsplus_t01a5).room_temp_act);
-        } while (0);
+          CHECK_PUB(emsplus_t01a5,room_temp_act,"sensor","CW400_room_temp",tel->h.offs,len);
         break;
         default: break;
       }
