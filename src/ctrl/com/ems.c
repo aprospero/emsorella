@@ -292,17 +292,17 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
         if (!uba_mon_wwm.sw2.circ_active)
         {
           we_switched = FALSE;  // reset if circulation is off
-          if (uba_mon_fast.tmp.water >= 570)
+          if (uba_mon_fast.tmp.water >= 750)
           {
             LG_INFO("Water temp %f°C. Activate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-            mq_push(msg_circ2_on, sizeof(msg_circ2_on), FALSE);  // send message next time we are elected for bus master.
+            mq_push(msg_circ_on, sizeof(msg_circ_on), FALSE);  // send message next time we are elected for bus master.
             we_switched = TRUE;
           }
         }
-        else if (uba_mon_fast.tmp.water <= 560 && we_switched == TRUE)
+        else if (uba_mon_fast.tmp.water <= 650 && we_switched == TRUE)
         {
           LG_INFO("Water temp %f°C. Deactivate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-          mq_push(msg_circ2_off, sizeof(msg_circ2_off), FALSE);  // send message next time we are elected for bus master.
+          mq_push(msg_circ_off, sizeof(msg_circ_off), FALSE);  // send message next time we are elected for bus master.
           we_switched = FALSE;
         }
       }
