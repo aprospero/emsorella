@@ -55,7 +55,7 @@ struct entity_params uba_mon_slow_params[] =
   { offsetof(struct ems_uba_monitor_slow, burner_starts_sane   ), sizeof(uba_mon_slow.burner_starts_sane)   , 0xFFFFFFFF, "%u",   "relay" , "uba_on_valve"  , 0}
 };
 
-#define GET_CHECKED_SIZE(MSGTYPE,MSGLEN,OFFS,LEN) (((MSGLEN) < (OFFS) + (LEN)) ? LG_INFO("#MSGTYPE Msg with wrong len/offs vs expected length: 0x%02X/0x%02X vs 0x%02X.", LEN, OFFS, MSGLEN), (((MSGLEN) <= (OFFS)) ? 0 : (MSGLEN) - (OFFS)) : (LEN))
+#define GET_CHECKED_SIZE(MSGTYPE,MSGLEN,OFFS,LEN) (((MSGLEN) < (OFFS) + (LEN)) ? LG_INFO(#MSGTYPE" Msg with wrong len/offs vs expected length: 0x%02X/0x%02X vs 0x%02X.", LEN, OFFS, MSGLEN), (((MSGLEN) <= (OFFS)) ? 0 : (MSGLEN) - (OFFS)) : (LEN))
 
 #define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) { (MSG).MEMBER = ntohs((MSG).MEMBER); } }
 #define CHECK_PUB(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (((int) offsetof(typeof(MSG),MEMBER) + 1) >= ((int) (OFFS) + 1) && ((int) (offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER))) <= ((int) ((OFFS) + (LEN) + 1))) { mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER); } }
