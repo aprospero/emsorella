@@ -62,6 +62,7 @@ struct entity_params uba_mon_slow_params[] =
 #define CHECK_PUB(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (((int) offsetof(typeof(MSG),MEMBER) + 1) >= ((int) (OFFS) + 1) && ((int) (offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER))) <= ((int) ((OFFS) + (LEN) + 1))) { mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER); } }
 #define CHECK_PUB_TRIVAL(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, ((MSG).MEMBER)[0] + (((MSG).MEMBER)[1] << 8) + (((MSG).MEMBER)[0] << 16)); } while (0)
 #define CHECK_PUB_FLG(MSG,MEMBER,FLAG,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER.FLAG); }
+#define CHECK_PUB_FLG_RAW(MSG,MEMBER,TOPIC,VALUE,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_raw(mqtt, TOPIC, VALUE); }
 #define CHECK_PUB_FORMATTED(MSG,MEMBER,TYPE,ENTITY,FORMAT,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_formatted(mqtt, TYPE, ENTITY, FORMAT, (MSG).MEMBER); } while (0)
 
 #define HTONU_TRIVAL(VALUE) (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16))
@@ -252,6 +253,7 @@ void ems_publish_telegram(struct ems_telegram * tel, size_t len)
       CHECK_PUB(uba_mon_wwm, ist[0],"sensor", "uba_ww_act1", tel->h.offs, len);
       CHECK_PUB(uba_mon_wwm, soll,"sensor", "uba_ww_nom", tel->h.offs, len);
       CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_active, "relay", "uba_ww_circ_active", tel->h.offs, len);
+      CHECK_PUB_FLG_RAW(uba_mon_wwm, sw2, "grafana/disp/circ_active", uba_mon_wwm.sw2.circ_active ? "1" : "0", tel->h.offs, len);
       CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_daylight, "relay", "uba_ww_circ_daylight", tel->h.offs, len);
       CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_manual, "relay", "uba_ww_circ_manual", tel->h.offs, len);
       CHECK_PUB_FLG(uba_mon_wwm, sw2, is_loading, "relay", "uba_ww_loading", tel->h.offs, len);
