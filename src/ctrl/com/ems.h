@@ -243,6 +243,9 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len);
 void ems_publish_telegram(struct ems_telegram * tel, size_t len);
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len);
 
+void ems_switch_circ1(const char * topic, const char * value);
+void ems_switch_circ2(const char * topic, const char * value);
+
 void print_telegram(int out, enum log_level loglevel, const char * prefix, uint8_t * msg, size_t len);
 
 #endif  //_CTRL_COM_EMS__H

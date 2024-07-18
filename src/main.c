@@ -30,6 +30,12 @@
 
 uint8_t tx_buf[1024];
 
+struct mqtt_sub subs[] = {
+                            { "grafana/circ1_on", ems_switch_circ1},
+                            { "grafana/circ2_on", ems_switch_circ2},
+                            { NULL              , NULL            }
+};
+
 struct emsorella_config cfg;
 
 int abort_rx_loop = FALSE;
@@ -102,6 +108,8 @@ int main(int argc, char *argv[]) {
   struct sigaction signal_action;
 
   parseArgs(argc, argv, &cfg);
+
+  cfg.mqtt.subs = subs;
 
   log_init("ems_serio",  cfg.log_facility, cfg.log_level);
 

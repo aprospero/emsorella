@@ -7,6 +7,7 @@
 #include "tools/msg_queue.h"
 #include "ctrl/logger.h"
 #include "ctrl/com/mqtt.h"
+#include "stringhelp.h"
 
 struct ems_plus_t01a5       emsplus_t01a5;
 struct ems_uba_monitor_fast uba_mon_fast;
@@ -273,8 +274,31 @@ uint8_t msg_circ_on [] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x11, 0x00 };
 uint8_t msg_circ_off[] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x01, 0x00 };
 
 /* switch thermostat not boiler? */
-uint8_t msg_circ2_off[] = { 0x8B, 0x10, 0xFF, 0x03, 0xF5, 0x02, 0x00, 0x00 };
-uint8_t msg_circ2_on [] = { 0x8B, 0x10, 0xFF, 0x03, 0xF5, 0x02, 0x01, 0x00 };
+uint8_t msg_circ2_on [] = { 0x8B, 0x10, 0xFF, 0x03, 0xF5, 0x01, 0x01, 0x00 };
+uint8_t msg_circ2_off[] = { 0x8B, 0x10, 0xFF, 0x03, 0xF5, 0x01, 0x00, 0x00 };
+
+void ems_switch_circ1(const char * topic, const char * value) {
+  if (stricmp(value, "true") == 0 || stricmp(value, "on") == 0 || strcmp(value, "1") == 0) {
+    LG_DEBUG("Sending circ1 on (%s).", topic);
+    mq_push(msg_circ_on, sizeof(msg_circ_on), FALSE);
+  }
+  else {
+    LG_DEBUG("Sending circ1 off (%s).", topic);
+    mq_push(msg_circ_off, sizeof(msg_circ_off), FALSE);
+  }
+}
+
+void ems_switch_circ2(const char * topic, const char * value) {
+  if (stricmp(value, "true") == 0 || stricmp(value, "on") == 0 || strcmp(value, "1") == 0) {
+    LG_DEBUG("Sending circ2 on (%s).", topic);
+    mq_push(msg_circ2_on, sizeof(msg_circ2_on), FALSE);
+  }
+  else {
+    LG_DEBUG("Sending circ2 off (%s).", topic);
+    mq_push(msg_circ2_off, sizeof(msg_circ2_off), FALSE);
+  }
+}
+
 
 
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
