@@ -156,7 +156,8 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
           LG_DEBUG("CW400 - Room Temp  %04.1f°C.", NANVAL(emsplus_t01a5.room_temp_act));
         break;
         default:
-          print_telegram(0, LL_INFO, "Unknown EMS+ Telegram", (uint8_t *) tel, len);
+          LG_INFO("Unknown EMS+ Telegram Type 0x%04X", tel->d.emsplus.type);
+          print_telegram(0, LL_INFO, "Content:", (uint8_t *) tel, len);
         break;
       }
     }
@@ -204,7 +205,8 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
     }
     break;
     default:
-      print_telegram(0, LL_INFO, "Unknown EMS Telegram", (uint8_t *) tel, len);
+      LG_INFO("Unknown EMS Telegram Type 0x%02X", tel->h.type);
+      print_telegram(0, LL_INFO, "Content: ", (uint8_t *) tel, len);
     break;
   }
 }
