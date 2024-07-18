@@ -142,7 +142,7 @@ int parseArgs(int argc, char * argv[], struct emsorella_config * config)
     fprintf(stdout, "  -p: MQTT brokers remote port. Default is: %d\n", DEFAULT_MQTT_PORT);
     fprintf(stdout, "  -i: MQTT client id (also used as user name). Default is: " DEFAULT_MQTT_CLIENT_ID "\n");
     fprintf(stdout, "  -t: MQTT topic. Default is: " DEFAULT_MQTT_TOPIC "\n");
-    fprintf(stdout, "  -d: MQTT quality of service. Default is: %d\n", DEFAULT_MQTT_QOS);
+    fprintf(stdout, "  -q: MQTT quality of service. Default is: %d\n", DEFAULT_MQTT_QOS);
 
     fprintf(stdout, "  -v: verbosity information. Available log levels:\n");
     for (idx = 1; idx < LL_COUNT; idx++)
