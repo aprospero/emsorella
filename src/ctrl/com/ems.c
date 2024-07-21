@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <time.h>
 
 #include "ems.h"
 #include "io/tx.h"
@@ -303,6 +304,7 @@ void ems_switch_circ(enum ems_device dev, int state) {
 
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
 {
+  static time_t last_circ_on = 0;
   static int we_switched = FALSE;
   len -= 5;
   switch (tel->h.type)
@@ -337,6 +339,21 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
     case ETT_UBA_MON_SLOW:
     break;
     case ETT_UBA_MON_WWM:
+      if (CHECK_UPDATE(uba_mon_wwm, sw2, tel->h.offs, len))
+      {
+        if (uba_mon_wwm.sw2.circ_active) {
+          if (last_circ_on == 0) {
+            last_circ_on = time(NULL);
+          }
+          else if (time(NULL) - last_circ_on >= 1200) {
+            LG_DEBUG("Circulation pump is running for over 20min. Switch it off.");
+            ems_switch_circ(EMS_DEV_THERMOSTAT, FALSE);
+          }
+        }
+        else { // circulation doesn't run.
+          last_circ_on = 0;
+        }
+      }
     break;
     default: break;
   }
