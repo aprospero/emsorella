@@ -314,23 +314,22 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
       }
     break;
     case ETT_UBA_MON_FAST:
-      if (offsetof(struct ems_uba_monitor_fast, tmp.water) >= tel->h.offs && offsetof(struct ems_uba_monitor_fast, tmp.water) + sizeof(uba_mon_fast.tmp.water) - 1 <= tel->h.offs + len)
+      if (CHECK_UPDATE(uba_mon_fast, tmp.water, tel->h.offs, len))
       {
-        LG_INFO("Check if Water's too hot or too cold.");
         if (!uba_mon_wwm.sw2.circ_active)
         {
           we_switched = FALSE;  // reset if circulation is off
           if (uba_mon_fast.tmp.water >= 750)
           {
-            LG_INFO("Water temp %f°C. Activate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-            mq_push(msg_thermostat_sw_circ[1], sizeof(msg_thermostat_sw_circ[1]), FALSE);  // send message next time we are elected for bus master.
+            LG_DEBUG("Water temp %f°C. Activate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
+            ems_switch_circ(EMS_DEV_THERMOSTAT, TRUE);
             we_switched = TRUE;
           }
         }
         else if (uba_mon_fast.tmp.water <= 650 && we_switched == TRUE)
         {
-          LG_INFO("Water temp %f°C. Deactivate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-          mq_push(msg_thermostat_sw_circ[0], sizeof(msg_thermostat_sw_circ[0]), FALSE);  // send message next time we are elected for bus master.
+          LG_DEBUG("Water temp %f°C. Deactivate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
+          ems_switch_circ(EMS_DEV_THERMOSTAT, FALSE);
           we_switched = FALSE;
         }
       }
