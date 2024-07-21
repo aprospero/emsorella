@@ -243,7 +243,7 @@ OFFSET_TEST(ems_telegram_uba_ks_akt_p, struct ems_telegram, d.uba_mon_fast.ks_ak
 
 
 void ems_init(struct mqtt_handle * mqtt);
-void ems_swap_telegram(struct ems_telegram * tel, size_t len);
+void ems_copy_telegram(struct ems_telegram * tel, size_t len);
 void ems_log_telegram(struct ems_telegram * tel, size_t len);
 void ems_publish_telegram(struct ems_telegram * tel, size_t len);
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len);

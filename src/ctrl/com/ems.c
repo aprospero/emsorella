@@ -72,15 +72,14 @@ void ems_init(struct mqtt_handle * mqtt_handle) {
   mqtt = mqtt_handle;
 }
 
-void ems_swap_telegram(struct ems_telegram * tel, size_t len)
+void ems_copy_telegram(struct ems_telegram * tel, size_t len)
 {
   len -= 5;
   switch (tel->h.type)
   {
     case ETT_EMSPLUS:
     {
-      tel->d.emsplus.type = ntohs(tel->d.emsplus.type);
-      switch (tel->d.emsplus.type)
+      switch (ntohs(tel->d.emsplus.type))
       {
         case EMSPLUS_01A5:
           len = GET_CHECKED_SIZE(emsplus_t01a5, offsetof(struct ems_plus_t01a5, res4), tel->h.offs, len - sizeof(tel->d.emsplus.type));
@@ -91,8 +90,6 @@ void ems_swap_telegram(struct ems_telegram * tel, size_t len)
             SWAP_TEL_S(emsplus_t01a5, prg_mode_remain_time, tel->h.offs, len);
             SWAP_TEL_S(emsplus_t01a5, prg_mode_passed_time, tel->h.offs, len);
           }
-
-
         break;
         default: break;
       }
@@ -149,14 +146,15 @@ void ems_log_telegram(struct ems_telegram * tel, size_t len)
   {
     case ETT_EMSPLUS:
     {
-      switch(tel->d.emsplus.type)
+      uint16_t ems_plus_type = ntohs(tel->d.emsplus.type);
+      switch (ems_plus_type)
       {
         case EMSPLUS_01A5:
           print_telegram(1, LL_DEBUG_MORE, "EMS+ Telegram 01a5", (uint8_t *) tel, len);
           LG_DEBUG("CW400 - Room Temp  %04.1f°C.", NANVAL(emsplus_t01a5.room_temp_act));
         break;
         default:
-          LG_INFO("Unknown EMS+ Telegram Type 0x%04X", tel->d.emsplus.type);
+          LG_INFO("Unknown EMS+ Telegram Type 0x%04X", ems_plus_type);
           print_telegram(0, LL_INFO, "Content:", (uint8_t *) tel, len);
         break;
       }
@@ -218,7 +216,7 @@ void ems_publish_telegram(struct ems_telegram * tel, size_t len)
   {
     case ETT_EMSPLUS:
     {
-      switch (tel->d.emsplus.type)
+      switch (ntohs(tel->d.emsplus.type))
       {
         case EMSPLUS_01A5:
           CHECK_PUB(emsplus_t01a5,room_temp_act,"sensor","CW400_room_temp",tel->h.offs,len);
@@ -303,6 +301,10 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
   switch (tel->h.type)
   {
     case ETT_EMSPLUS:
+      switch (ntohs(tel->d.emsplus.type))
+      {
+        default: break;
+      }
     break;
     case ETT_UBA_MON_FAST:
       if (offsetof(struct ems_uba_monitor_fast, tmp.water) >= tel->h.offs && offsetof(struct ems_uba_monitor_fast, tmp.water) + sizeof(uba_mon_fast.tmp.water) - 1 <= tel->h.offs + len)

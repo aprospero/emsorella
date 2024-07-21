@@ -102,7 +102,7 @@ static int rx_done() {
   else
   {
     struct ems_telegram * tel = (struct ems_telegram *) rx_buf;
-    ems_swap_telegram(tel, rx_len);
+    ems_copy_telegram(tel, rx_len);
     ems_log_telegram(tel, rx_len);
     ems_publish_telegram(tel, rx_len);
     ems_logic_evaluate_telegram(tel, rx_len);
