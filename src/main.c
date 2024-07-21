@@ -32,7 +32,9 @@
 uint8_t tx_buf[1024];
 
 static inline int get_bool_from_string(const char * str) {
-  return (stricmp(str, "true") == 0 || stricmp(str, "on") == 0 || strcmp(str, "1") == 0);
+  char * c = NULL;
+  long long int v = strtoll(str, &c, 10);
+  return (stricmp(str, "true") == 0 || stricmp(str, "on") == 0 || (v != 0 && c != NULL && *c == '\0'));
 }
 
 void ems_switch_circ_boiler(__attribute__((unused)) const char * topic, const char * value) {
