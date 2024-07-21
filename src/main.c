@@ -25,14 +25,27 @@
 #include "tools/stats.h"
 #include "args.h"
 #include "version.h"
+#include <stringhelp.h>
 
 #define DEFAULT_LOG_FAC LF_LOCAL1
 
 uint8_t tx_buf[1024];
 
+static inline int get_bool_from_string(const char * str) {
+  return (stricmp(str, "true") == 0 || stricmp(str, "on") == 0 || strcmp(str, "1") == 0);
+}
+
+void ems_switch_circ_boiler(__attribute__((unused)) const char * topic, const char * value) {
+  ems_switch_circ(EMS_DEV_BOILER, get_bool_from_string(value));
+}
+void ems_switch_circ_thermostat(__attribute__((unused)) const char * topic, const char * value) {
+  ems_switch_circ(EMS_DEV_THERMOSTAT, get_bool_from_string(value));
+}
+
+
 struct mqtt_sub subs[] = {
-                            { "grafana/circ1_on", ems_switch_circ1},
-                            { "grafana/circ2_on", ems_switch_circ2},
+                            { "grafana/circ1_on", ems_switch_circ_boiler},
+                            { "grafana/circ2_on", ems_switch_circ_thermostat},
                             { NULL              , NULL            }
 };
 

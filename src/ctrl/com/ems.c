@@ -273,36 +273,27 @@ void ems_publish_telegram(struct ems_telegram * tel, size_t len)
   }
 }
 
+/* switch circ on boiler */
+uint8_t msg_boiler_sw_circ [][7] = { { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x01, 0x00 },    /* off */
+                                     { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x11, 0x00 } };  /* on  */
+SIZE_TEST(msg_boiler_sw_circ, msg_boiler_sw_circ[0], 7);
 
-uint8_t msg_circ_on [] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x11, 0x00 };
-uint8_t msg_circ_off[] = { 0x8B, 0x08, 0x35, 0x00, 0x11, 0x01, 0x00 };
+/* switch circ on thermostat */
+uint8_t msg_thermostat_sw_circ [][8] = { { 0x8B, 0x10, 0xFF, 0x03, 0x01, 0xF5, 0x00, 0x00 },    /* off */
+                                         { 0x8B, 0x10, 0xFF, 0x03, 0x01, 0xF5, 0x01, 0x00 } };  /* on  */
+SIZE_TEST(msg_thermostat_sw_circ, msg_thermostat_sw_circ[0], 8);
 
-/* switch thermostat not boiler? */
-uint8_t msg_circ2_on [] = { 0x8B, 0x10, 0xFF, 0x03, 0x01, 0xF5, 0x01, 0x00 };
-uint8_t msg_circ2_off[] = { 0x8B, 0x10, 0xFF, 0x03, 0x01, 0xF5, 0x00, 0x00 };
 
-void ems_switch_circ1(const char * topic, const char * value) {
-  if (stricmp(value, "true") == 0 || stricmp(value, "on") == 0 || strcmp(value, "1") == 0) {
-    LG_DEBUG("Sending circ1 on (%s).", topic);
-    mq_push(msg_circ_on, sizeof(msg_circ_on), FALSE);
-  }
-  else {
-    LG_DEBUG("Sending circ1 off (%s).", topic);
-    mq_push(msg_circ_off, sizeof(msg_circ_off), FALSE);
-  }
-}
-
-void ems_switch_circ2(const char * topic, const char * value) {
-  if (stricmp(value, "true") == 0 || stricmp(value, "on") == 0 || strcmp(value, "1") == 0) {
-    LG_DEBUG("Sending circ2 on (%s).", topic);
-    mq_push(msg_circ2_on, sizeof(msg_circ2_on), FALSE);
-  }
-  else {
-    LG_DEBUG("Sending circ2 off (%s).", topic);
-    mq_push(msg_circ2_off, sizeof(msg_circ2_off), FALSE);
+void ems_switch_circ(enum ems_device dev, int state) {
+  LG_DEBUG("Switching circ on device 0x%02X to %d.", dev, state);
+  state = state ? 1 : 0;
+  switch (dev)
+  {
+    case EMS_DEV_BOILER:     mq_push(msg_boiler_sw_circ[state], sizeof(msg_boiler_sw_circ[0]), FALSE);         break;
+    case EMS_DEV_THERMOSTAT: mq_push(msg_thermostat_sw_circ[state], sizeof(msg_thermostat_sw_circ[0]), FALSE); break;
+    default:                 LG_ERROR("Switching circ on invalid device (0x%02X) to %d failed.", dev, state);     break;
   }
 }
-
 
 
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
@@ -323,14 +314,14 @@ void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
           if (uba_mon_fast.tmp.water >= 750)
           {
             LG_INFO("Water temp %f°C. Activate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-            mq_push(msg_circ_on, sizeof(msg_circ_on), FALSE);  // send message next time we are elected for bus master.
+            mq_push(msg_thermostat_sw_circ[1], sizeof(msg_thermostat_sw_circ[1]), FALSE);  // send message next time we are elected for bus master.
             we_switched = TRUE;
           }
         }
         else if (uba_mon_fast.tmp.water <= 650 && we_switched == TRUE)
         {
           LG_INFO("Water temp %f°C. Deactivate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-          mq_push(msg_circ_off, sizeof(msg_circ_off), FALSE);  // send message next time we are elected for bus master.
+          mq_push(msg_thermostat_sw_circ[0], sizeof(msg_thermostat_sw_circ[0]), FALSE);  // send message next time we are elected for bus master.
           we_switched = FALSE;
         }
       }
