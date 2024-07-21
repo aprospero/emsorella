@@ -65,8 +65,8 @@ struct entity_params uba_mon_slow_params[] =
 #define CHECK_PUB_FLG_RAW(MSG,MEMBER,TOPIC,VALUE,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_raw(mqtt, TOPIC, VALUE); }
 #define CHECK_PUB_FORMATTED(MSG,MEMBER,TYPE,ENTITY,FORMAT,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_formatted(mqtt, TYPE, ENTITY, FORMAT, (MSG).MEMBER); } while (0)
 
-#define HTONU_TRIVAL(VALUE) (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16))
-#define HTON_TRIVAL(VALUE)  (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16) + ((VALUE[2] >> 7) * 0xFF000000UL))
+#define NTOHU_TRIVAL(VALUE) (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16))
+#define NTOH_TRIVAL(VALUE)  (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16) + ((VALUE[2] >> 7) * 0xFF000000UL))
 
 void ems_init(struct mqtt_handle * mqtt_handle) {
   mqtt = mqtt_handle;
@@ -120,10 +120,10 @@ void ems_swap_telegram(struct ems_telegram * tel, size_t len)
         SWAP_TEL_S(uba_mon_slow, tmp_boiler, tel->h.offs, len);
         SWAP_TEL_S(uba_mon_slow, tmp_exhaust, tel->h.offs, len);
         SWAP_TEL_S(uba_mon_slow, tmp_out, tel->h.offs, len);
-        uba_mon_slow.burner_starts_sane = HTONU_TRIVAL(uba_mon_slow.burner_starts);
-        uba_mon_slow.run_time_heating_sane = HTON_TRIVAL(uba_mon_slow.run_time_heating);
-        uba_mon_slow.run_time_sane = HTON_TRIVAL(uba_mon_slow.run_time);
-        uba_mon_slow.run_time_stage_2_sane = HTON_TRIVAL(uba_mon_slow.run_time_stage_2);
+        uba_mon_slow.burner_starts_sane = NTOHU_TRIVAL(uba_mon_slow.burner_starts);
+        uba_mon_slow.run_time_heating_sane = NTOH_TRIVAL(uba_mon_slow.run_time_heating);
+        uba_mon_slow.run_time_sane = NTOH_TRIVAL(uba_mon_slow.run_time);
+        uba_mon_slow.run_time_stage_2_sane = NTOH_TRIVAL(uba_mon_slow.run_time_stage_2);
       }
     }
     break;
@@ -133,8 +133,8 @@ void ems_swap_telegram(struct ems_telegram * tel, size_t len)
         memcpy(((uint8_t *) &uba_mon_wwm) + tel->h.offs, tel->d.raw, len);
         SWAP_TEL_S(uba_mon_wwm, ist[0], tel->h.offs, len);
         SWAP_TEL_S(uba_mon_wwm, ist[1], tel->h.offs, len);
-        uba_mon_wwm.op_time_sane = HTONU_TRIVAL(uba_mon_wwm.op_time);
-        uba_mon_wwm.op_count_sane = HTONU_TRIVAL(uba_mon_wwm.op_count);
+        uba_mon_wwm.op_time_sane = NTOHU_TRIVAL(uba_mon_wwm.op_time);
+        uba_mon_wwm.op_count_sane = NTOHU_TRIVAL(uba_mon_wwm.op_count);
       }
 
     break;
