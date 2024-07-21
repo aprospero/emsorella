@@ -59,11 +59,8 @@ struct entity_params uba_mon_slow_params[] =
 #define GET_CHECKED_SIZE(MSGTYPE,MSGLEN,OFFS,LEN) (((MSGLEN) < (OFFS) + (LEN)) ? LG_INFO(#MSGTYPE" Msg with wrong len/offs vs expected length: 0x%02X/0x%02X vs 0x%02X.", LEN, OFFS, MSGLEN), (((MSGLEN) <= (OFFS)) ? 0 : (MSGLEN) - (OFFS)) : (LEN))
 
 #define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) { (MSG).MEMBER = ntohs((MSG).MEMBER); } }
-#define CHECK_PUB(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (((int) offsetof(typeof(MSG),MEMBER) + 1) >= ((int) (OFFS) + 1) && ((int) (offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER))) <= ((int) ((OFFS) + (LEN) + 1))) { mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER); } }
-#define CHECK_PUB_TRIVAL(MSG,MEMBER,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, ((MSG).MEMBER)[0] + (((MSG).MEMBER)[1] << 8) + (((MSG).MEMBER)[0] << 16)); } while (0)
-#define CHECK_PUB_FLG(MSG,MEMBER,FLAG,TYPE,ENTITY,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish(mqtt, TYPE, ENTITY, (MSG).MEMBER.FLAG); }
-#define CHECK_PUB_FLG_RAW(MSG,MEMBER,TOPIC,VALUE,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_raw(mqtt, TOPIC, VALUE); }
-#define CHECK_PUB_FORMATTED(MSG,MEMBER,TYPE,ENTITY,FORMAT,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) mqtt_publish_formatted(mqtt, TYPE, ENTITY, FORMAT, (MSG).MEMBER); } while (0)
+
+#define CHECK_UPDATE(MSG,MEMBER,OFFS,LEN) (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) <= ((OFFS) + (LEN) + 1))
 
 #define NTOHU_TRIVAL(VALUE) (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16))
 #define NTOH_TRIVAL(VALUE)  (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16) + ((VALUE[2] >> 7) * 0xFF000000UL))
@@ -219,53 +216,63 @@ void ems_publish_telegram(struct ems_telegram * tel, size_t len)
       switch (ntohs(tel->d.emsplus.type))
       {
         case EMSPLUS_01A5:
-          CHECK_PUB(emsplus_t01a5,room_temp_act,"sensor","CW400_room_temp",tel->h.offs,len);
+          if (CHECK_UPDATE(emsplus_t01a5, room_temp_act, tel->h.offs, len))  mqtt_publish(mqtt, "sensor", "CW400_room_temp", emsplus_t01a5.room_temp_act);
         break;
         default: break;
       }
     }
     break;
     case ETT_UBA_MON_FAST:
-      CHECK_PUB(uba_mon_fast, tmp.water,"sensor", "uba_water", tel->h.offs, len);
-      CHECK_PUB(uba_mon_fast, vl_ist, "sensor", "uba_vl_act", tel->h.offs, len);
-      CHECK_PUB(uba_mon_fast, vl_soll, "sensor", "uba_vl_nom", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_fast, on, pump, "relay","uba_on_pump", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_fast, on, gas, "relay","uba_on_gas", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_fast, on, valve, "relay","uba_on_valve", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_fast, on, blower, "relay","uba_on_blower", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_fast, on, circ, "relay","uba_on_circ", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_fast, on, ignite, "relay","uba_on_igniter", tel->h.offs, len);
-      CHECK_PUB(uba_mon_fast, ks_akt_p, "sensor","uba_power_act", tel->h.offs, len);
-      CHECK_PUB(uba_mon_fast, ks_max_p, "sensor","uba_power_max", tel->h.offs, len);
-      CHECK_PUB(uba_mon_fast, fl_current, "sensor", "uba_flame_current", tel->h.offs, len);
-      CHECK_PUB(uba_mon_fast, err,        "sensor", "uba_error", tel->h.offs, len);
-      CHECK_PUB_FORMATTED(uba_mon_fast, service_code, "sensor", "uba_service_code", "%.2s", tel->h.offs, len);
+      if (CHECK_UPDATE(uba_mon_fast, tmp.water, tel->h.offs, len))  mqtt_publish(mqtt, "sensor", "uba_water", uba_mon_fast.tmp.water);
+      if (CHECK_UPDATE(uba_mon_fast, vl_ist, tel->h.offs, len))     mqtt_publish(mqtt, "sensor", "uba_vl_act", uba_mon_fast.vl_ist);
+      if (CHECK_UPDATE(uba_mon_fast, vl_soll, tel->h.offs, len))    mqtt_publish(mqtt, "sensor", "uba_vl_nom", uba_mon_fast.vl_soll);
+      if (CHECK_UPDATE(uba_mon_fast, on, tel->h.offs, len)) {
+        mqtt_publish(mqtt, "relay", "uba_on_pump", uba_mon_fast.on.pump);
+        mqtt_publish(mqtt, "relay", "uba_on_gas", uba_mon_fast.on.gas);
+        mqtt_publish(mqtt, "relay", "uba_on_valve", uba_mon_fast.on.valve);
+        mqtt_publish(mqtt, "relay", "uba_on_blower", uba_mon_fast.on.blower);
+        mqtt_publish(mqtt, "relay", "uba_on_circ", uba_mon_fast.on.circ);
+        mqtt_publish(mqtt, "relay", "uba_on_igniter", uba_mon_fast.on.ignite);
+      }
+      if (CHECK_UPDATE(uba_mon_fast, ks_akt_p, tel->h.offs, len))     mqtt_publish(mqtt, "sensor", "uba_power_act", uba_mon_fast.ks_akt_p);
+      if (CHECK_UPDATE(uba_mon_fast, ks_max_p, tel->h.offs, len))     mqtt_publish(mqtt, "sensor", "uba_power_max", uba_mon_fast.ks_max_p);
+      if (CHECK_UPDATE(uba_mon_fast, fl_current, tel->h.offs, len))   mqtt_publish(mqtt, "sensor", "uba_flame_current", uba_mon_fast.fl_current);
+      if (CHECK_UPDATE(uba_mon_fast, err, tel->h.offs, len))          mqtt_publish(mqtt, "sensor", "uba_error", uba_mon_fast.err);
+      if (CHECK_UPDATE(uba_mon_fast, service_code, tel->h.offs, len)) mqtt_publish_formatted(mqtt, "sensor", "uba_service_code", "%.2s", uba_mon_fast.service_code);
     break;
     case ETT_UBA_MON_SLOW:
-      CHECK_PUB(uba_mon_slow, tmp_out      , "sensor", "uba_outside" , tel->h.offs, len);
-//      CHECK_PUB(uba_mon_slow, run_time_sane, "sensor", "uba_rt"      , tel->h.offs, len);
-      CHECK_PUB(uba_mon_slow, pump_mod     , "sensor", "uba_pump_mod", tel->h.offs, len);
-//      CHECK_PUB(uba_mon_slow, run_time_heating, "sensor", "uba_rt_heating", tel->h.offs, len);
-//      CHECK_PUB(uba_mon_slow, run_time_stage_2, "sensor", "uba_rt_stage2", tel->h.offs, len);
-//      CHECK_PUB(uba_mon_slow, burner_starts, "sensor", "uba_burner_starts", tel->h.offs, len);
+      if (CHECK_UPDATE(uba_mon_slow, tmp_out, tel->h.offs, len))   mqtt_publish(mqtt, "sensor", "uba_outside", uba_mon_slow.tmp_out);
+      if (CHECK_UPDATE(uba_mon_slow, pump_mod, tel->h.offs, len))  mqtt_publish(mqtt, "sensor", "uba_pump_mod", uba_mon_slow.pump_mod);
+/*
+      if (CHECK_UPDATE(uba_mon_slow, run_time_heating, tel->h.offs, len)) mqtt_publish(mqtt, "sensor", "uba_rt_heating", uba_mon_slow.run_time_heating_sane);
+      if (CHECK_UPDATE(uba_mon_slow, run_time, tel->h.offs, len)) mqtt_publish(mqtt, "sensor", "uba_rt_boiler", uba_mon_slow.run_time_sane);
+      if (CHECK_UPDATE(uba_mon_slow, run_time_stage_2, tel->h.offs, len)) mqtt_publish(mqtt, "sensor", "uba_rt_boiler_2", uba_mon_slow.run_time_stage_2_sane);
+      if (CHECK_UPDATE(uba_mon_slow, burner_starts, tel->h.offs, len)) mqtt_publish(mqtt, "sensor", "uba_burner_starts", uba_mon_slow.burner_starts_sane);
+*/
     break;
     case ETT_UBA_MON_WWM:
-      CHECK_PUB(uba_mon_wwm, ist[0],"sensor", "uba_ww_act1", tel->h.offs, len);
-      CHECK_PUB(uba_mon_wwm, soll,"sensor", "uba_ww_nom", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_active, "relay", "uba_ww_circ_active", tel->h.offs, len);
-      CHECK_PUB_FLG_RAW(uba_mon_wwm, sw2, "grafana/disp/circ_active", uba_mon_wwm.sw2.circ_active ? "1" : "0", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_daylight, "relay", "uba_ww_circ_daylight", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw2, circ_manual, "relay", "uba_ww_circ_manual", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw2, is_loading, "relay", "uba_ww_loading", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw1, active, "relay", "uba_ww_active", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw1, single_load, "relay", "uba_ww_single_load", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw1, reloading, "relay", "uba_ww_reloading", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw1, daylight_mode, "relay", "uba_ww_daylight", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, sw1, desinfect, "relay", "uba_ww_desinfect", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, fail, desinfect, "relay", "uba_ww_fail_desinfect", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, fail, probe_1, "relay", "uba_ww_fail_probe1", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, fail, probe_2, "relay", "uba_ww_fail_probe2", tel->h.offs, len);
-      CHECK_PUB_FLG(uba_mon_wwm, fail, ww, "relay", "uba_ww_fail", tel->h.offs, len);
+      if (CHECK_UPDATE(uba_mon_wwm, ist[0], tel->h.offs, len)) mqtt_publish(mqtt, "sensor", "uba_ww_act1", uba_mon_wwm.ist[0]);
+      if (CHECK_UPDATE(uba_mon_wwm, soll, tel->h.offs, len))   mqtt_publish(mqtt, "sensor", "uba_ww_nom", uba_mon_wwm.soll);
+      if (CHECK_UPDATE(uba_mon_wwm, sw2, tel->h.offs, len)) {
+        mqtt_publish(mqtt, "relay", "uba_ww_circ_active", uba_mon_wwm.sw2.circ_active);
+        mqtt_publish_raw(mqtt, "grafana/disp/circ_active", uba_mon_wwm.sw2.circ_active ? "1" : "0");
+        mqtt_publish(mqtt, "relay", "uba_ww_circ_daylight", uba_mon_wwm.sw2.circ_daylight);
+        mqtt_publish(mqtt, "relay", "uba_ww_circ_manual", uba_mon_wwm.sw2.circ_manual);
+        mqtt_publish(mqtt, "relay", "uba_ww_loading", uba_mon_wwm.sw2.is_loading);
+      }
+      if (CHECK_UPDATE(uba_mon_wwm, sw1, tel->h.offs, len)) {
+        mqtt_publish(mqtt, "relay", "uba_ww_active", uba_mon_wwm.sw1.active);
+        mqtt_publish(mqtt, "relay", "uba_ww_single_load", uba_mon_wwm.sw1.single_load);
+        mqtt_publish(mqtt, "relay", "uba_ww_reloading", uba_mon_wwm.sw1.reloading);
+        mqtt_publish(mqtt, "relay", "uba_ww_daylight", uba_mon_wwm.sw1.daylight_mode);
+        mqtt_publish(mqtt, "relay", "uba_ww_desinfect", uba_mon_wwm.sw1.desinfect);
+      }
+      if (CHECK_UPDATE(uba_mon_wwm, fail, tel->h.offs, len)) {
+        mqtt_publish(mqtt, "relay", "uba_ww_fail_desinfect", uba_mon_wwm.fail.desinfect);
+        mqtt_publish(mqtt, "relay", "uba_ww_fail_probe1", uba_mon_wwm.fail.probe_1);
+        mqtt_publish(mqtt, "relay", "uba_ww_fail_probe2", uba_mon_wwm.fail.probe_2);
+        mqtt_publish(mqtt, "relay", "uba_ww_fail", uba_mon_wwm.fail.ww);
+      }
     break;
     default: break;
   }
