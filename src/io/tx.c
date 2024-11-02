@@ -111,7 +111,7 @@ void tx_update()
       tx_retries++;
       if (tx_retries > MAX_TX_RETRIES)
       {
-        LG_WARN("TX failed %d times. Dropping message.", MAX_TX_RETRIES);
+        LG_ERROR("TX failed %d times. Dropping message.", MAX_TX_RETRIES);
         tx_retries = -1;
         mq_pull();
         tx_release();
