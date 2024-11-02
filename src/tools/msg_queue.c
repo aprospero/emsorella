@@ -32,15 +32,23 @@ int mq_init(uint8_t * buf, size_t len)
   return hnd.pfree == NULL ? -1 : 0;
 }
 
-int mq_push(uint8_t * buf, size_t len, int do_copy)
-{
-  struct mq_queued_msg * msg;
-  size_t    free_sz   = 0;
+size_t mq_get_free() {
+  uint8_t * pfree     = hnd.pfree;                                                        // ptr to start of free memory
+  uint8_t * poccupied = hnd.head == NULL ? hnd.buf + hnd.buf_sz : ((uint8_t *) hnd.head); // ptr to start of occupied memory
+
+  if (pfree > poccupied)
+    return (hnd.buf + hnd.buf_sz - pfree) + (poccupied - hnd.buf);  // start|<------>|poccupied      pfree|<------>|end
+  else
+    return poccupied - pfree;                                       //      |start   pfree|<------>|poccupied   end|
+}
+
+
+uint8_t * mq_would_fit(size_t len, int do_copy) {
   uint8_t * palloc    = NULL; // ptr to allocatable memory
   uint8_t * pfree     = NULL; // ptr to start of free memory
   uint8_t * poccupied = NULL; // ptr to start of occupied memory
+  size_t    free_sz   = 0;
 
-  // alculate size of needed memory
   size_t sz = sizeof(struct mq_queued_msg);
   if (do_copy)
     sz += len;
@@ -67,7 +75,22 @@ int mq_push(uint8_t * buf, size_t len, int do_copy)
     if (free_sz >= sz)
       palloc = pfree;
   }
-  if (palloc == NULL)
+  return palloc;
+}
+
+
+
+int mq_push(uint8_t * buf, size_t len, int do_copy)
+{
+  struct mq_queued_msg * msg    = NULL;
+  uint8_t *              palloc = NULL;
+  // calculate needed memory+ size
+  size_t sz = sizeof(struct mq_queued_msg);
+  if (do_copy)
+    sz += len;
+
+  palloc = mq_would_fit(len, do_copy);
+  if (!palloc)
   {
     LG_ERROR("Out of memory trying to allocate %d Bytes message space.", sz);
     return -1;
