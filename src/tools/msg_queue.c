@@ -35,28 +35,34 @@ int mq_init(uint8_t * buf, size_t len)
 int mq_push(uint8_t * buf, size_t len, int do_copy)
 {
   struct mq_queued_msg * msg;
-  size_t    free_sz;
-  uint8_t * palloc = NULL;     // ptr to allocatable memory
-  uint8_t * pfree = hnd.pfree; // ptr to start of free memory
-  uint8_t * poccupied = hnd.tail == NULL ? hnd.buf + hnd.buf_sz : ((uint8_t *) hnd.head); // ptr to start of occupied memory
+  size_t    free_sz   = 0;
+  uint8_t * palloc    = NULL; // ptr to allocatable memory
+  uint8_t * pfree     = NULL; // ptr to start of free memory
+  uint8_t * poccupied = NULL; // ptr to start of occupied memory
 
-  size_t    sz = sizeof(struct mq_queued_msg);  // alculate size of needed memory
+  // alculate size of needed memory
+  size_t sz = sizeof(struct mq_queued_msg);
   if (do_copy)
     sz += len;
 
-  pfree = hnd.pfree; // find free memory
+  pfree     = hnd.pfree;
   poccupied = hnd.head == NULL ? hnd.buf + hnd.buf_sz : ((uint8_t *) hnd.head); // ptr to start of occupied memory
   if (pfree > poccupied)
   {
+    // calculate free memory between pfree and ringbuffer end:    |start   |poccupied  pfree|<------>|end
     free_sz = hnd.buf + hnd.buf_sz - pfree;
-    if (free_sz >= sz)
+    if (free_sz >= sz) {
       palloc = pfree;
-    free_sz = poccupied - hnd.buf;
+    } else {
+      //  look for enough between buffer start and poccupied:   start|<------>|poccupied    pfree| end|
+      free_sz = poccupied - hnd.buf;
     if (free_sz >= sz)
       palloc = hnd.buf;
+    }
   }
   else
   {
+    // calculate free memory between pfree and poccupied:    |start      pfree|<------>|poccupied     end|
     free_sz = poccupied - pfree;
     if (free_sz >= sz)
       palloc = pfree;
@@ -66,7 +72,6 @@ int mq_push(uint8_t * buf, size_t len, int do_copy)
     LG_ERROR("Out of memory trying to allocate %d Bytes message space.", sz);
     return -1;
   }
-
 
   msg = (struct mq_queued_msg *) palloc;  // construct new queued message
   if (do_copy)
@@ -103,8 +108,10 @@ void mq_pull()
   if (hnd.head)
   {
     hnd.head = hnd.head->next;
-    if (hnd.head == NULL)
+    if (hnd.head == NULL) {
       hnd.tail = NULL;
+      hnd.pfree = hnd.buf;
+    }
   }
 }
 
