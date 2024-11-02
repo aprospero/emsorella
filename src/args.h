@@ -4,8 +4,13 @@
 #include "ctrl/com/mqtt.h"
 #include "ctrl/logger.h"
 
+#ifndef EMSORELLA_TEST
 #define DEFAULT_LOG_FACILITY LF_LOCAL1
 #define DEFAULT_LOG_LEVEL    LL_ERROR
+#else
+#define DEFAULT_LOG_FACILITY LF_STDOUT
+#define DEFAULT_LOG_LEVEL    LL_DEBUG
+#endif
 
 #define DEFAULT_SERIAL_DEVICE "/dev/ttymxc0"
 
