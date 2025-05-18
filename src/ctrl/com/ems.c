@@ -3,19 +3,26 @@
 #include <string.h>
 #include <time.h>
 
-#include "ems.h"
+#include "ctrl/com/ems.h"
 #include "io/tx.h"
 #include "tools/msg_queue.h"
 #include "ctrl/logger.h"
 #include "ctrl/com/mqtt.h"
+#include "ctrl/com/logic.h"
 #include "stringhelp.h"
+
+#define ONOFF(VALUE) ((VALUE) ? "ON " : "OFF")
+#define NANVAL(VALUE) ((VALUE) == 0x8000 ? (0.0 / 0.0) : 0.1f * (VALUE))
+#define NANVA8(VALUE) ((VALUE) == 0xFF ? (0.0 / 0.0) : 0.1f * (VALUE))
+#define TRIVAL(VALUE) ((VALUE)[2] + ((VALUE)[1] << 8) + ((VALUE)[0] << 16))
 
 struct ems_plus_t01a5       emsplus_t01a5;
 struct ems_uba_monitor_fast uba_mon_fast;
 struct ems_uba_monitor_slow uba_mon_slow;
 struct ems_uba_monitor_wwm  uba_mon_wwm;
 
-struct mqtt_handle * mqtt;
+struct mqtt_handle        * mqtt  = NULL;
+const struct ems_logic_cb * logic = NULL;
 
 struct entity_params
 {
@@ -61,13 +68,15 @@ struct entity_params uba_mon_slow_params[] =
 
 #define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) { (MSG).MEMBER = ntohs((MSG).MEMBER); } }
 
-#define CHECK_UPDATE(MSG,MEMBER,OFFS,LEN) (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) <= ((OFFS) + (LEN) + 1))
+#define CHECK_NUM_UPDATE(VALOFFS,VALLEN,MSGOFFS,MSGLEN) ((VALOFFS) >= (MSGOFFS) && (VALOFFS) + (VALLEN) <= ((MSGOFFS) + (MSGLEN) + 1))
+#define CHECK_UPDATE(MSG,MEMBER,OFFS,LEN) (CHECK_NUM_UPDATE(offsetof(typeof(MSG),MEMBER),sizeof((MSG).MEMBER),OFFS,LEN))
 
 #define NTOHU_TRIVAL(VALUE) (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16))
 #define NTOH_TRIVAL(VALUE)  (VALUE[0] + (VALUE[1] << 8) + (VALUE[2] << 16) + ((VALUE[2] >> 7) * 0xFF000000UL))
 
 void ems_init(struct mqtt_handle * mqtt_handle) {
   mqtt = mqtt_handle;
+  logic_init(&logic);
 }
 
 void ems_copy_telegram(struct ems_telegram * tel, size_t len)
@@ -304,58 +313,22 @@ void ems_switch_circ(enum ems_device dev, int state) {
 
 void ems_logic_evaluate_telegram(struct ems_telegram * tel, size_t len)
 {
-  static time_t last_circ_on = 0;
-  static int we_switched = FALSE;
-  len -= 5;
-  switch (tel->h.type)
+  if (logic)
   {
-    case ETT_EMSPLUS:
-      switch (ntohs(tel->d.emsplus.type))
+    len -=5;
+    for(const struct ems_logic_cb * lcb = logic; lcb->cb != NULL; ++lcb)
+    {
+      int id = 0;
+      for (const struct ems_logic_fct_val * val = lcb->test_val; val->len > 0; ++val)
       {
-        default: break;
-      }
-    break;
-    case ETT_UBA_MON_FAST:
-      if (CHECK_UPDATE(uba_mon_fast, tmp.water, tel->h.offs, len))
-      {
-        if (!uba_mon_wwm.sw2.circ_active)
+        if (val->tel_type == tel->h.type)
         {
-          we_switched = FALSE;  // reset if circulation is off
-          if (uba_mon_fast.tmp.water >= 750)
-          {
-            LG_DEBUG("Water temp %f°C. Activate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-            ems_switch_circ(EMS_DEV_THERMOSTAT, TRUE);
-            we_switched = TRUE;
-          }
+          if (CHECK_NUM_UPDATE(val->offs, val->len, tel->h.offs, len))
+            lcb->cb(id);
         }
-        else if (uba_mon_fast.tmp.water <= 650 && we_switched == TRUE)
-        {
-          LG_DEBUG("Water temp %f°C. Deactivate Circulation pump.", 0.1 * uba_mon_fast.tmp.water);
-          ems_switch_circ(EMS_DEV_THERMOSTAT, FALSE);
-          we_switched = FALSE;
-        }
+        ++id;
       }
-    break;
-    case ETT_UBA_MON_SLOW:
-    break;
-    case ETT_UBA_MON_WWM:
-      if (CHECK_UPDATE(uba_mon_wwm, sw2, tel->h.offs, len))
-      {
-        if (uba_mon_wwm.sw2.circ_active) {
-          if (last_circ_on == 0) {
-            last_circ_on = time(NULL);
-          }
-          else if (time(NULL) - last_circ_on >= 1200) {
-            LG_DEBUG("Circulation pump is running for over 20min. Switch it off.");
-            ems_switch_circ(EMS_DEV_THERMOSTAT, FALSE);
-          }
-        }
-        else { // circulation doesn't run.
-          last_circ_on = 0;
-        }
-      }
-    break;
-    default: break;
+    }
   }
 }
 
