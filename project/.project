@@ -155,6 +155,16 @@
 			<locationURI>PARENT-1-PROJECT_LOC/src/ctrl/com/ems.h</locationURI>
 		</link>
 		<link>
+			<name>src/ctrl/com/logic.c</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/src/ctrl/com/logic.c</locationURI>
+		</link>
+		<link>
+			<name>src/ctrl/com/logic.h</name>
+			<type>1</type>
+			<locationURI>PARENT-1-PROJECT_LOC/src/ctrl/com/logic.h</locationURI>
+		</link>
+		<link>
 			<name>src/ctrl/com/state.c</name>
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/src/ctrl/com/state.c</locationURI>

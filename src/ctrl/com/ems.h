@@ -7,19 +7,9 @@
 #include "ctrl/logger.h"
 #include "ctrl/com/mqtt.h"
 
-
-#define ONOFF(VALUE) ((VALUE) ? "ON " : "OFF")
-#define NANVAL(VALUE) ((VALUE) == 0x8000 ? (0.0 / 0.0) : 0.1f * (VALUE))
-#define NANVA8(VALUE) ((VALUE) == 0xFF ? (0.0 / 0.0) : 0.1f * (VALUE))
-#define TRIVAL(VALUE) ((VALUE)[2] + ((VALUE)[1] << 8) + ((VALUE)[0] << 16))
-
-
 #define SIZE_TEST(NAME,TYPE,SIZE) struct size_test_##NAME { int i[(sizeof(TYPE)== SIZE) * 2 - 1]; }
 
-
-
 #define OFFSET_TEST(NAME,TYPE,MEMBER,OFFS) struct offs_test_##NAME { int i[(offsetof(TYPE, MEMBER) == OFFS) * 2 - 1]; }
-
 
 enum ems_tel_type
 {
@@ -240,7 +230,19 @@ OFFSET_TEST(ems_telegram_uba_tmp_water,struct ems_telegram, d.uba_mon_fast.tmp.w
 OFFSET_TEST(ems_telegram_uba_err,      struct ems_telegram, d.uba_mon_fast.err,       24);
 OFFSET_TEST(ems_telegram_uba_ks_akt_p, struct ems_telegram, d.uba_mon_fast.ks_akt_p,   8);
 
+typedef void (*logic_cb)(int val_id);
 
+struct ems_logic_fct_val
+{
+  enum ems_tel_type tel_type;
+  uint16_t          offs;
+  uint16_t          len;
+};
+
+struct ems_logic_cb {
+  logic_cb                         cb;
+  const struct ems_logic_fct_val * test_val;
+};
 
 void ems_init(struct mqtt_handle * mqtt);
 void ems_copy_telegram(struct ems_telegram * tel, size_t len);
