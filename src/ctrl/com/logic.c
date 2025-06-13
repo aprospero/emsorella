@@ -66,6 +66,8 @@ void logic_circulation(int val_id)
     state.circ.threshold  = LGK_CIRC_NOM_TEMP;
     state.circ.last_start = 0;
     state.circ.started = FALSE;
+    LG_INFO("Water temp Logic initilized. Threshold: %5.1f°C, Hysteresis: %5.1f°C. Interval: %ds, Duration: %ds, Auto-Off after %ds."
+             , 0.1 * LGK_CIRC_NOM_TEMP, 0.1 * LGK_CIRC_HYSTERESIS, LGK_CIRC_INTERVAL, LGK_CIRC_DURATION, LGK_CIRC_MAX_DURATION);
   }
 
   int    temp    = uba_mon_fast.tmp.water;
@@ -92,15 +94,17 @@ void logic_circulation(int val_id)
   {
     if (now - state.circ.last_on > LGK_CIRC_INTERVAL - LGK_CIRC_DURATION) /* interval start */
     {
-      LG_DEBUG("Water temp %f°C. Activate auto circulation.", 0.1 * temp);
+      LG_INFO("Water temp %5.1f°C (>=%5.1f°C). Activate auto circulation.", 0.1 * temp, 0.1 * state.circ.threshold);
       ems_switch_circ(EMS_DEV_THERMOSTAT, TRUE);
       state.circ.last_on = now;
+      if (state.circ.last_start == 0)
+        state.circ.last_start = now;
       state.circ.threshold = LGK_CIRC_NOM_TEMP - LGK_CIRC_HYSTERESIS;
       state.circ.started = TRUE;
     }
     else if (state.circ.started && state.circ.last_start != 0 && now - state.circ.last_start > LGK_CIRC_DURATION) /* interval stop */
     {
-      LG_DEBUG("Water temp %f°C. Interval deactivate auto Circulation.", 0.1 * temp);
+      LG_INFO("Water temp %5.1f°C (>=%5.1f°C). Interval deactivate auto Circulation.", 0.1 * temp, 0.1 * state.circ.threshold);
       ems_switch_circ(EMS_DEV_THERMOSTAT, FALSE);
       state.circ.started = FALSE;
     }
@@ -109,7 +113,7 @@ void logic_circulation(int val_id)
   {
     if (state.circ.started == TRUE)
     {
-      LG_DEBUG("Water temp %f°C. Deactivate auto Circulation.", 0.1 * temp);
+      LG_INFO("Water temp %5.1f°C (<%5.1f°C). Deactivate auto Circulation.", 0.1 * temp, 0.1 * state.circ.threshold);
       if (state.circ.last_on == now)
       {
         ems_switch_circ(EMS_DEV_THERMOSTAT, FALSE);
@@ -120,7 +124,7 @@ void logic_circulation(int val_id)
   }
   if (state.circ.last_start != 0 && now - state.circ.last_start >= LGK_CIRC_MAX_DURATION)
   {
-    LG_DEBUG("Circulation pump is running for over 20 min. Auto-off.");
+    LG_INFO("Circulation pump is running for over %4.1f min. Auto-off.", 1.0f * LGK_CIRC_MAX_DURATION / 60.0f);
     ems_switch_circ(EMS_DEV_THERMOSTAT, FALSE);
   }
 }
