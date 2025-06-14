@@ -50,7 +50,7 @@ int serial_open(const char *tty_path) {
     }
     uart_reg = mmap(NULL, UART_REG_LEN, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, UART_REG_BASE);
     if (uart_reg == MAP_FAILED) {
-       LG_ERROR("Could not mmap");
+       LG_ERROR("Could not map UART registers");
        return 1;
     }
 
