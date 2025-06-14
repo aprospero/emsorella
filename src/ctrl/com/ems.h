@@ -187,6 +187,7 @@ struct ems_plus_t01a5
   uint16_t prg_mode_remain_time;  // 1 min
   uint16_t prg_mode_passed_time;  // 1 min
   uint8_t res4[7];
+  uint8_t extension[16];
 } __attribute__((packed));
 
 union ems_plus_payload

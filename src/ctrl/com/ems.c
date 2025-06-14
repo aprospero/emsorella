@@ -57,7 +57,7 @@ struct entity_params uba_mon_slow_params[] =
   { offsetof(struct ems_uba_monitor_slow, burner_starts_sane   ), sizeof(uba_mon_slow.burner_starts_sane)   , 0xFFFFFFFF, "%u",   "relay" , "uba_on_valve"  , 0}
 };
 
-#define GET_CHECKED_SIZE(MSGTYPE,MSGLEN,OFFS,LEN) (((MSGLEN) < (OFFS) + (LEN)) ? LG_INFO(#MSGTYPE" Msg with wrong len/offs vs expected length: 0x%02X/0x%02X vs 0x%02X.", LEN, OFFS, MSGLEN), (((MSGLEN) <= (OFFS)) ? 0 : (MSGLEN) - (OFFS)) : (LEN))
+#define CHECK_MSG_SIZE(MSGTYPE,MSGLEN,OFFS,LEN) (((MSGLEN) < (OFFS) + (LEN)) ? LG_INFO(#MSGTYPE" Msg with overflowing len/offs vs expected length: 0x%02X/0x%02X vs 0x%02X.", LEN, OFFS, MSGLEN), FALSE : TRUE)
 
 #define SWAP_TEL_S(MSG,MEMBER,OFFS,LEN) { if (offsetof(typeof(MSG),MEMBER) >= (OFFS) && offsetof(typeof(MSG),MEMBER) + sizeof((MSG).MEMBER) - 1 <= ((OFFS) + (LEN))) { (MSG).MEMBER = ntohs((MSG).MEMBER); } }
 
@@ -80,13 +80,14 @@ void ems_copy_telegram(struct ems_telegram * tel, size_t len)
       switch (ntohs(tel->d.emsplus.type))
       {
         case EMSPLUS_01A5:
-          len = GET_CHECKED_SIZE(emsplus_t01a5, offsetof(struct ems_plus_t01a5, res4), tel->h.offs, len - sizeof(tel->d.emsplus.type));
-          if (len) {
+          if (CHECK_MSG_SIZE(emsplus_t01a5, sizeof(struct ems_plus_t01a5), tel->h.offs, len - sizeof(tel->d.emsplus.type))) {
             memcpy(((uint8_t *) &emsplus_t01a5) + tel->h.offs, tel->d.emsplus.d.raw, len);
             SWAP_TEL_S(emsplus_t01a5, room_temp_act, tel->h.offs, len);
             SWAP_TEL_S(emsplus_t01a5, mode_remain_time, tel->h.offs, len);
             SWAP_TEL_S(emsplus_t01a5, prg_mode_remain_time, tel->h.offs, len);
             SWAP_TEL_S(emsplus_t01a5, prg_mode_passed_time, tel->h.offs, len);
+          } else {
+            print_telegram(0, LL_INFO, "Content: ", (uint8_t *) tel, len);
           }
         break;
         default: break;
@@ -95,8 +96,7 @@ void ems_copy_telegram(struct ems_telegram * tel, size_t len)
     break;
     case ETT_UBA_MON_FAST:
     {
-      len = GET_CHECKED_SIZE(uba_mon_fast, offsetof(struct ems_uba_monitor_fast, res2), tel->h.offs, len);
-      if (len) {
+      if (CHECK_MSG_SIZE(uba_mon_fast, sizeof(struct ems_uba_monitor_fast), tel->h.offs, len)) {
         memcpy(((uint8_t *) &uba_mon_fast) + tel->h.offs, tel->d.raw, len);
         SWAP_TEL_S(uba_mon_fast, err, tel->h.offs, len);
         SWAP_TEL_S(uba_mon_fast, fl_current, tel->h.offs, len);
@@ -104,13 +104,14 @@ void ems_copy_telegram(struct ems_telegram * tel, size_t len)
         SWAP_TEL_S(uba_mon_fast, tmp.tmp1, tel->h.offs, len);
         SWAP_TEL_S(uba_mon_fast, tmp.water, tel->h.offs, len);
         SWAP_TEL_S(uba_mon_fast, vl_ist, tel->h.offs, len);
+      } else {
+        print_telegram(0, LL_INFO, "Content: ", (uint8_t *) tel, len);
       }
     }
     break;
     case ETT_UBA_MON_SLOW:
     {
-      len = GET_CHECKED_SIZE(uba_mon_slow, offsetof(struct ems_uba_monitor_slow, burner_starts_sane), tel->h.offs, len);
-      if (len) {
+      if (CHECK_MSG_SIZE(uba_mon_slow, sizeof(struct ems_uba_monitor_slow), tel->h.offs, len)) {
         memcpy(((uint8_t *) &uba_mon_slow) + tel->h.offs, tel->d.raw, len);
         SWAP_TEL_S(uba_mon_slow, tmp_boiler, tel->h.offs, len);
         SWAP_TEL_S(uba_mon_slow, tmp_exhaust, tel->h.offs, len);
@@ -119,17 +120,20 @@ void ems_copy_telegram(struct ems_telegram * tel, size_t len)
         uba_mon_slow.run_time_heating_sane = NTOH_TRIVAL(uba_mon_slow.run_time_heating);
         uba_mon_slow.run_time_sane = NTOH_TRIVAL(uba_mon_slow.run_time);
         uba_mon_slow.run_time_stage_2_sane = NTOH_TRIVAL(uba_mon_slow.run_time_stage_2);
+      } else {
+        print_telegram(0, LL_INFO, "Content: ", (uint8_t *) tel, len);
       }
     }
     break;
     case ETT_UBA_MON_WWM:
-      len = GET_CHECKED_SIZE(uba_mon_wwm, offsetof(struct ems_uba_monitor_wwm, op_time_sane), tel->h.offs, len);
-      if (len) {
+      if (CHECK_MSG_SIZE(uba_mon_wwm, sizeof(struct ems_uba_monitor_wwm), tel->h.offs, len)) {
         memcpy(((uint8_t *) &uba_mon_wwm) + tel->h.offs, tel->d.raw, len);
         SWAP_TEL_S(uba_mon_wwm, ist[0], tel->h.offs, len);
         SWAP_TEL_S(uba_mon_wwm, ist[1], tel->h.offs, len);
         uba_mon_wwm.op_time_sane = NTOHU_TRIVAL(uba_mon_wwm.op_time);
         uba_mon_wwm.op_count_sane = NTOHU_TRIVAL(uba_mon_wwm.op_count);
+      } else {
+        print_telegram(0, LL_INFO, "Content: ", (uint8_t *) tel, len);
       }
 
     break;
