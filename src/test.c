@@ -149,10 +149,9 @@ int loop()
 
     buf = calloc(1, sz);
     if (buf == NULL) {
-      LG_ERROR("Can allocate memory.");
+      LG_ERROR("Can't allocate memory.");
       continue;
     }
-
 
     mq_init(buf, sz);
 
@@ -179,7 +178,6 @@ int loop()
       LG_CRITICAL("Queue is empty but there are more expected (...");
       return -1;
     }
-
   }
   return 0;
 }
