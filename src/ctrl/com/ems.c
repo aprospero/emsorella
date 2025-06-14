@@ -90,7 +90,7 @@ void ems_copy_telegram(struct ems_telegram * tel, size_t len)
       {
         case EMSPLUS_01A5:
           if (CHECK_MSG_SIZE(emsplus_t01a5, sizeof(struct ems_plus_t01a5), tel->h.offs, len - sizeof(tel->d.emsplus.type))) {
-            memcpy(((uint8_t *) &emsplus_t01a5) + tel->h.offs, tel->d.emsplus.d.raw, len);
+            memcpy(((uint8_t *) &emsplus_t01a5) + tel->h.offs, tel->d.emsplus.d.raw, len - sizeof(tel->d.emsplus.type));
             SWAP_TEL_S(emsplus_t01a5, room_temp_act, tel->h.offs, len);
             SWAP_TEL_S(emsplus_t01a5, mode_remain_time, tel->h.offs, len);
             SWAP_TEL_S(emsplus_t01a5, prg_mode_remain_time, tel->h.offs, len);
