@@ -49,12 +49,11 @@ void logic_init(const struct ems_logic_cb ** logic_cb)
     *logic_cb = logics;
 }
 
-#define LGK_CIRC_NOM_TEMP      650 /* temperature where circulation is utilized (centigrade) */
-#define LGK_CIRC_HYSTERESIS     20 /* centigrade celsius difference between on and off state */
+#define LGK_CIRC_NOM_TEMP      650 /* temperature where auto circulation is activated (centigrade celsius) */
+#define LGK_CIRC_HYSTERESIS      5 /* difference between auto circulation on and off state (centigrade) */
 #define LGK_CIRC_INTERVAL     1200 /* auto circulation is applied in intervals of <x> seconds */
-#define LGK_CIRC_DURATION      180 /* <x> seconds active circulation per interval */
+#define LGK_CIRC_DURATION      180 /* active circulation per interval for <x> seconds */
 #define LGK_CIRC_MAX_DURATION 1200 /* any circulation has a max duration before auto off */
-
 
 void logic_circulation(int val_id)
 {
